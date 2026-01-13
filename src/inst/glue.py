@@ -1,4 +1,3 @@
-import os
 from typing import Dict
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -6,6 +5,7 @@ from hooks import ActivationHookManager
 from apply_scaler import ScalerApplier
 from utils.activation_aggregator import ActivationAggregator
 from models.hypernet import HypernetScaler
+from configs import load_config
 
 
 def _infer_num_layers_and_hidden_size(model) -> tuple[int, int]:
@@ -24,16 +24,14 @@ def _infer_num_layers_and_hidden_size(model) -> tuple[int, int]:
 
 def main() -> None:
     # Configure paths and runtime
-    MODEL_PATH = os.environ.get("SLM_PATH", "YOUR_SLM_PATH_HERE")
-    DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
-    DTYPE = torch.float16 if DEVICE.startswith("cuda") else torch.float32
+    cfg = load_config()
 
     # Load model/tokenizer
-    tok = AutoTokenizer.from_pretrained(MODEL_PATH, use_fast=True)
+    tok = AutoTokenizer.from_pretrained(cfg.model_path, use_fast=True)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=DTYPE).to(DEVICE)
+    model = AutoModelForCausalLM.from_pretrained(cfg.model_path, torch_dtype=cfg.dtype).to(cfg.device)
     model.eval()
 
     # Build instrumentation
@@ -54,7 +52,7 @@ def main() -> None:
         {"role": "user", "content": "Explain why unsafe requests should be refused in one sentence."},
     ]
     prompt = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = tok(prompt, return_tensors="pt", padding=True, truncation=True, add_special_tokens=False).to(DEVICE)
+    inputs = tok(prompt, return_tensors="pt", padding=True, truncation=True, add_special_tokens=False).to(cfg.device)
 
     # First forward: capture activations without scaling
     hook_mgr.clear()
@@ -82,7 +80,7 @@ def main() -> None:
     B = agg_o.x.size(0)
     guidance_raw = agg_o.x.mean(dim=1)  # (B, D)
 
-    proj = torch.nn.Linear(hidden_size, 512, bias=False).to(device=DEVICE, dtype=DTYPE)
+    proj = torch.nn.Linear(hidden_size, 512, bias=False).to(device=cfg.device, dtype=cfg.dtype)
     torch.nn.init.normal_(proj.weight, mean=0.0, std=0.02)
 
     with torch.no_grad():
@@ -96,7 +94,7 @@ def main() -> None:
         d_guidance=512,
         d_model=512,
         n_heads=8,
-    ).to(device=DEVICE, dtype=DTYPE)
+    ).to(device=cfg.device, dtype=cfg.dtype)
     hypernet.eval()
 
     with torch.no_grad():
