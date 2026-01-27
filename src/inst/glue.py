@@ -1,10 +1,11 @@
 from typing import Dict
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from hooks import ActivationHookManager
-from apply_scaler import ScalerApplier
-from utils.activation_aggregator import ActivationAggregator
-from models.hypernet import HypernetScaler
+
+from src.inst.hooks import ActivationHookManager
+from src.inst.apply_scaler import ScalerApplier
+from src.utils.activation_aggregator import ActivationAggregator
+from src.model.hypernet import HypernetScaler
 from configs import load_config
 
 
@@ -27,11 +28,11 @@ def main() -> None:
     cfg = load_config()
 
     # Load model/tokenizer
-    tok = AutoTokenizer.from_pretrained(cfg.model_path, use_fast=True)
+    tok = AutoTokenizer.from_pretrained(cfg.model_path)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(cfg.model_path, torch_dtype=cfg.dtype).to(cfg.device)
+    model = AutoModelForCausalLM.from_pretrained(cfg.model_path, torch_dtype=cfg.dtype, device_map=cfg.device)
     model.eval()
 
     # Build instrumentation
@@ -64,7 +65,7 @@ def main() -> None:
 
     acts_o: Dict[int, torch.Tensor] = hook_mgr.get_point("o_proj")
     acts_d: Dict[int, torch.Tensor] = hook_mgr.get_point("down_proj")
-
+    print(f"[act] acts_o: {len(acts_o)}, act_d: {len(acts_d)}")
     # Aggregate activations to (B, L, D)
     num_layers, hidden_size = _infer_num_layers_and_hidden_size(model)
     aggregator = ActivationAggregator(strict=True)
@@ -76,7 +77,6 @@ def main() -> None:
     print(f"[agg] down_proj:{tuple(agg_d.x.shape)} (expected B,L,D={hidden_size})")
 
     # Build a simple guidance vector for smoke testing
-    # (Here: mean over layers of last-token o_proj activations, then linear projection to 512)
     B = agg_o.x.size(0)
     guidance_raw = agg_o.x.mean(dim=1)  # (B, D)
 
@@ -100,6 +100,10 @@ def main() -> None:
     with torch.no_grad():
         hn_out = hypernet(guidance=guidance)
         scalers = hn_out.scalers
+        with torch.no_grad():
+          scalers["o_proj"] = torch.randn_like(scalers["o_proj"]) * 0.2
+          scalers["down_proj"] = torch.randn_like(scalers["down_proj"]) * 0.2
+
         print(f"[hn] o_proj scaler:   {tuple(scalers['o_proj'].shape)}")
         print(f"[hn] down_proj scaler:{tuple(scalers['down_proj'].shape)}")
 
@@ -110,7 +114,7 @@ def main() -> None:
         out1 = model(**inputs)
         logits1 = out1.logits
 
-    # Basic sanity check: logits should change if scaling is active (may be small due to zero-init)
+    # Basic sanity check: logits should change if scaling is active
     diff = (logits1 - logits0).abs().mean().item()
     print(f"[check] mean(|logits1-logits0|) = {diff:.6e}")
 

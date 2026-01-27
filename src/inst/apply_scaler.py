@@ -15,21 +15,6 @@ class ScalerHookSpec:
 class ScalerApplier:
     """
     Apply per-layer, per-channel scaling to SLM module outputs via forward hooks.
-
-    You provide scalers as:
-      scalers["o_proj"]    : Tensor (B, L, D)
-      scalers["down_proj"] : Tensor (B, L, D)
-
-    Hook logic (for each layer l):
-      y = y * clamp(1 + strength * s_l, min=..., max=...)   (broadcast over sequence dim)
-
-    Typical use:
-      - applier = ScalerApplier()
-      - applier.attach_llama_o_proj_and_down_proj(model)
-      - applier.set_scalers({"o_proj": s1, "down_proj": s2})
-      - _ = model(**batch)   # scaling applied during this forward
-      - applier.clear_scalers()
-      - applier.remove()
     """
 
     def __init__(
@@ -61,9 +46,6 @@ class ScalerApplier:
         # Remember which specs are active
         self._specs: Dict[str, ScalerHookSpec] = {}
 
-    # --------------------------
-    # Public APIs
-    # --------------------------
 
     def attach_o_down_proj(self, model: nn.Module) -> None:
         """
@@ -82,6 +64,10 @@ class ScalerApplier:
             ),
         ]
         self.attach_by_specs(model, specs)
+
+    def attach_llama_o_proj_and_down_proj(self, model: nn.Module) -> None:
+        """Backward-compatible alias for attach_o_down_proj."""
+        self.attach_o_down_proj(model)
 
     def attach_by_specs(self, model: nn.Module, specs: list[ScalerHookSpec]) -> None:
         """Attach scaler hooks by (point, regex) specs."""
@@ -163,6 +149,7 @@ class ScalerApplier:
                 scale = s
             else:
                 # Fallback for unexpected shapes; try to broadcast on last dim
+                scale = s
                 while scale.dim() < out.dim():
                     scale = scale.unsqueeze(1)
 

@@ -81,6 +81,10 @@ class ActivationHookManager:
         ]
         self.register_by_specs(model, specs)
 
+    def register_llama_o_proj_and_down_proj(self, model: nn.Module) -> None:
+        """Backward-compatible alias for register_o_down_proj."""
+        self.register_o_down_proj(model)
+
     def register_by_specs(self, model: nn.Module, specs: list[HookSpec]) -> None:
         """Register hooks by (point, regex) specs."""
         for spec in specs:
@@ -157,6 +161,8 @@ class ActivationHookManager:
                 out = out.cpu()
 
             # Keep raw shape by default (B,T,D or B,D)
+            if not self.keep_sequence_dim and out.dim() == 3:
+                out = out[:, -1, :]
             self._cache[point][layer_idx] = out
 
         return hook
