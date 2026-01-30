@@ -40,7 +40,9 @@ class JsonlDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
-        return self.samples[idx]
+        sample = dict(self.samples[idx])
+        sample["__idx"] = idx
+        return sample
 
 
 class SafetyHead(nn.Module):
@@ -367,7 +369,7 @@ def main() -> None:
     for p in safety_head.parameters():
         p.requires_grad = False
 
-    ckpt_path = os.environ.get("STAGE1_CKPT", os.path.join(cfg.save_dir, "stage1.pt"))
+    ckpt_path = os.environ.get("STAGE1_CKPT", cfg.stage1_ckpt_path)
     ckpt = _load_stage1_checkpoint(ckpt_path, encoder, hypernet, safety_head)
     print(f"[stage2] loaded_stage1={ckpt_path}")
     if isinstance(ckpt, dict) and "config" in ckpt and "components" in ckpt["config"]:
@@ -396,15 +398,19 @@ def main() -> None:
     dataset = JsonlDataset(cfg.dataset_path, fallback=fallback)
     print(f"[stage2] dataset_size={len(dataset)} batch_size={cfg.batch_size}")
 
-    def collate(batch: List[Dict[str, Any]]) -> Tuple[Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    def collate(
+        batch: List[Dict[str, Any]],
+    ) -> Tuple[Dict[str, torch.Tensor], Optional[torch.Tensor], List[int]]:
         texts: List[str] = []
         prompts: List[str] = []
         safety_labels: List[Optional[float]] = []
+        indices: List[int] = []
         for sample in batch:
             text, prompt, label = _format_sample(sample)
             texts.append(text)
             prompts.append(prompt)
             safety_labels.append(label)
+            indices.append(int(sample["__idx"]))
 
         enc = tok(
             texts,
@@ -435,7 +441,7 @@ def main() -> None:
             safety = torch.tensor(lab, dtype=torch.float32)
         else:
             safety = None
-        return enc, safety
+        return enc, safety, indices
 
     steps_per_epoch = max(1, (len(dataset) + cfg.batch_size - 1) // cfg.batch_size)
     total_steps = max(cfg.num_steps, steps_per_epoch * cfg.stage2_epochs)
@@ -444,7 +450,9 @@ def main() -> None:
     )
 
     loader = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True, collate_fn=collate)
-    data_iter: Iterable[Tuple[Dict[str, torch.Tensor], Optional[torch.Tensor]]] = iter(loader)
+    data_iter: Iterable[
+        Tuple[Dict[str, torch.Tensor], Optional[torch.Tensor], List[int]]
+    ] = iter(loader)
 
     train_params: List[nn.Parameter] = list(attn_module.parameters()) + list(hypernet.parameters())
     if tune_encoder:
@@ -473,10 +481,10 @@ def main() -> None:
 
     for step in tqdm(range(total_steps), desc="stage2"):
         try:
-            batch, safety = next(data_iter)
+            batch, safety, indices = next(data_iter)
         except StopIteration:
             data_iter = iter(loader)
-            batch, safety = next(data_iter)
+            batch, safety, indices = next(data_iter)
 
         batch = {k: v.to(cfg.device) for k, v in batch.items()}
         if safety is not None:
@@ -525,6 +533,16 @@ def main() -> None:
             clean = torch.nan_to_num(value, nan=0.0, posinf=1.0, neginf=-1.0)
             scalers[key] = torch.clamp(clean, min=-0.5, max=0.5)
         applier.set_scalers(scalers)
+
+        if cfg.stage2_scaler_cache:
+            os.makedirs(cfg.stage2_scaler_cache, exist_ok=True)
+            for i, idx in enumerate(indices):
+                path = os.path.join(cfg.stage2_scaler_cache, f"{idx}.pt")
+                payload = {
+                    "o_proj": scalers["o_proj"][i].detach().cpu(),
+                    "down_proj": scalers["down_proj"][i].detach().cpu(),
+                }
+                torch.save(payload, path)
 
         need_safety = safety is not None and cfg.safety_weight > 0.0
         outputs = student(
@@ -618,7 +636,7 @@ def main() -> None:
         },
     }
     os.makedirs(cfg.save_dir, exist_ok=True)
-    torch.save(ckpt, os.path.join(cfg.save_dir, "stage2.pt"))
+    torch.save(ckpt, cfg.stage2_ckpt_path)
 
     hook_teacher.remove()
     hook_student.remove()

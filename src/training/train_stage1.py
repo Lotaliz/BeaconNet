@@ -440,7 +440,7 @@ def main() -> None:
         },
     }
     os.makedirs(cfg.save_dir, exist_ok=True)
-    torch.save(ckpt, os.path.join(cfg.save_dir, "stage1.pt"))
+    torch.save(ckpt, cfg.stage1_ckpt_path)
 
     applier.remove()
 

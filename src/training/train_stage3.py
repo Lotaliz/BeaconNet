@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import math
 import os
@@ -398,8 +396,8 @@ def main() -> None:
 
     safety_head = SafetyHead(hidden_size=student_hidden).to(device=cfg.device, dtype=torch.float32)
 
-    stage1_ckpt = os.environ.get("STAGE1_CKPT", os.path.join(cfg.save_dir, "stage1.pt"))
-    stage2_ckpt = os.environ.get("STAGE2_CKPT", os.path.join(cfg.save_dir, "stage2.pt"))
+    stage1_ckpt = os.environ.get("STAGE1_CKPT", cfg.stage1_ckpt_path)
+    stage2_ckpt = os.environ.get("STAGE2_CKPT", cfg.stage2_ckpt_path)
     _load_stage1(stage1_ckpt, encoder, safety_head)
     _load_stage2(stage2_ckpt, encoder, hypernet, attention)
     print(f"[stage3] loaded_stage1={stage1_ckpt}")
@@ -414,7 +412,7 @@ def main() -> None:
 
     lightz = LightZNet(student_hidden, cfg.d_attn).to(device=cfg.device, dtype=torch.float32)
 
-    unfreeze_hypernet = bool(int(os.environ.get("UNFREEZE_HYPERNET", "0")))
+    unfreeze_hypernet = bool(cfg.unfreeze_hypernet)
     for p in hypernet.parameters():
         p.requires_grad = unfreeze_hypernet
 
@@ -480,9 +478,9 @@ def main() -> None:
         return enc, safety, indices
 
     steps_per_epoch = max(1, (len(dataset) + cfg.batch_size - 1) // cfg.batch_size)
-    total_steps = max(cfg.num_steps, steps_per_epoch * cfg.num_epochs)
+    total_steps = max(cfg.num_steps, steps_per_epoch * cfg.stage3_epochs)
     print(
-        f"[stage3] steps_per_epoch={steps_per_epoch} num_epochs={cfg.num_epochs} total_steps={total_steps}"
+        f"[stage3] steps_per_epoch={steps_per_epoch} num_epochs={cfg.stage3_epochs} total_steps={total_steps}"
     )
 
     loader = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True, collate_fn=collate)
@@ -505,10 +503,10 @@ def main() -> None:
     lightz.train()
     safety_head.eval()
 
-    safe_weight = float(os.environ.get("SAFE_LIGHT_WEIGHT", "0.0"))
+    safe_weight = float(cfg.safe_light_weight)
     print(f"[stage3] safe_weight={safe_weight}")
 
-    cache_dir = os.environ.get("STAGE2_SCALER_CACHE", "")
+    cache_dir = cfg.stage2_scaler_cache
     if cache_dir:
         print(f"[stage3] scaler_cache_dir={cache_dir}")
 
@@ -644,7 +642,7 @@ def main() -> None:
         },
     }
     os.makedirs(cfg.save_dir, exist_ok=True)
-    torch.save(ckpt, os.path.join(cfg.save_dir, "stage3.pt"))
+    torch.save(ckpt, cfg.stage3_ckpt_path)
 
     hook_teacher.remove()
     hook_student.remove()
