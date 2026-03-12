@@ -1,9 +1,6 @@
-from __future__ import annotations
-
 import json
 import os
 import random
-import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -22,14 +19,14 @@ from src.inst.infer import LightZNet  # reuse same architecture
 from src.utils.activation_aggregator import ActivationAggregator
 
 
-class HexPhiDataset(Dataset):
+class PromptEvalDataset(Dataset):
     def __init__(self, path: str) -> None:
         if not os.path.isfile(path):
-            raise FileNotFoundError(f"Validation dataset not found: {path}")
+            raise FileNotFoundError(f"Evaluation dataset not found: {path}")
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         if not isinstance(data, list):
-            raise TypeError("hex-phi.json must be a JSON list.")
+            raise TypeError("Evaluation dataset must be a JSON list.")
         self.samples: List[Dict[str, Any]] = []
         for i, row in enumerate(data):
             if not isinstance(row, dict):
@@ -112,9 +109,11 @@ def _guard_classify(
         {"role": "assistant", "content": response},
     ]
     input_ids = guard_tokenizer.apply_chat_template(message, return_tensors="pt").to(device)
+    attention_mask = torch.ones_like(input_ids, device=input_ids.device, dtype=torch.long)
     with torch.no_grad():
         output = guard_model.generate(
             input_ids=input_ids,
+            attention_mask=attention_mask,
             max_new_tokens=max_new_tokens,
             do_sample=False,
             pad_token_id=guard_tokenizer.pad_token_id or guard_tokenizer.eos_token_id,
@@ -132,15 +131,36 @@ class Batch:
     attention_mask: torch.Tensor
     prompts: List[str]
     indices: List[int]
-    types: List[Optional[str]]
+    metas: List[Dict[str, Any]]
+
+
+def _resolve_eval_dataset(cfg) -> Tuple[str, str, str]:
+    name = str(cfg.eval_dataset_name).strip()
+    if name not in cfg.eval_dataset_paths:
+        supported = ", ".join(sorted(cfg.eval_dataset_paths))
+        raise ValueError(f"Unsupported eval_dataset_name={name!r}. Supported: {supported}")
+    path = cfg.eval_dataset_paths[name]
+    output_path = os.path.join(cfg.eval_output_dir, f"eval_results_{name}.json")
+    return name, path, output_path
+
+
+def _extract_meta(row: Dict[str, Any]) -> Dict[str, Any]:
+    meta: Dict[str, Any] = {}
+    for key, value in row.items():
+        if key == "__idx":
+            continue
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            meta[key] = value
+    return meta
 
 
 def main() -> None:
     cfg = load_config()
-    torch.manual_seed(cfg.val_seed)
-    random.seed(cfg.val_seed)
+    dataset_name, dataset_path, output_path = _resolve_eval_dataset(cfg)
+    torch.manual_seed(cfg.eval_seed)
+    random.seed(cfg.eval_seed)
 
-    os.makedirs(os.path.dirname(cfg.val_output_path) or ".", exist_ok=True)
+    os.makedirs(cfg.eval_output_dir, exist_ok=True)
 
     tok = AutoTokenizer.from_pretrained(cfg.model_path, use_fast=True)
     tok.padding_side = "left"
@@ -231,9 +251,9 @@ def main() -> None:
     applier.attach_llama_o_proj_and_down_proj(model)
     aggregator = ActivationAggregator(strict=True)
 
-    dataset = HexPhiDataset(cfg.val_dataset_path)
+    dataset = PromptEvalDataset(dataset_path)
     n = len(dataset)
-    k = min(int(cfg.val_sample_size), n)
+    k = min(int(cfg.eval_sample_size), n)
     all_idx = list(range(n))
     random.shuffle(all_idx)
     sel = set(all_idx[:k])
@@ -242,7 +262,7 @@ def main() -> None:
     def collate(samples: List[Dict[str, Any]]) -> Batch:
         prompts = [_extract_prompt(s) for s in samples]
         indices = [int(s["__idx"]) for s in samples]
-        types = [str(s.get("type")) if s.get("type") is not None else None for s in samples]
+        metas = [_extract_meta(s) for s in samples]
         enc = tok(
             prompts,
             padding=True,
@@ -255,14 +275,14 @@ def main() -> None:
             attention_mask=enc["attention_mask"],
             prompts=prompts,
             indices=indices,
-            types=types,
+            metas=metas,
         )
 
     loader = DataLoader(subset, batch_size=cfg.batch_size, shuffle=False, collate_fn=collate)
 
     results: List[Dict[str, Any]] = []
 
-    for batch in tqdm(loader, desc="val-hex-phi"):
+    for batch in tqdm(loader, desc=f"eval-{dataset_name}"):
         input_ids = batch.input_ids.to(cfg.device)
         attention_mask = batch.attention_mask.to(cfg.device)
         B = input_ids.size(0)
@@ -341,8 +361,8 @@ def main() -> None:
             results.append(
                 {
                     "idx": batch.indices[i],
-                    "type": batch.types[i],
                     "prompt": prompt,
+                    "meta": batch.metas[i],
                     "baseline_response": base_resp,
                     "tuned_response": tuned_resp,
                     "baseline_safety_logit": float(base_slogit[i]),
@@ -356,17 +376,19 @@ def main() -> None:
                 }
             )
 
-    with open(cfg.val_output_path, "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(
             {
                 "config": {
-                    "val_dataset_path": cfg.val_dataset_path,
-                    "val_sample_size": cfg.val_sample_size,
-                    "val_seed": cfg.val_seed,
+                    "eval_dataset_name": dataset_name,
+                    "eval_dataset_path": dataset_path,
+                    "eval_sample_size": k,
+                    "eval_seed": cfg.eval_seed,
                     "model_path": cfg.model_path,
                     "stage1_ckpt_path": cfg.stage1_ckpt_path,
                     "stage3_ckpt_path": cfg.stage3_ckpt_path,
                     "llama_guard_model_path": cfg.llama_guard_model_path,
+                    "output_path": output_path,
                 },
                 "results": results,
             },
@@ -374,6 +396,17 @@ def main() -> None:
             ensure_ascii=False,
             indent=2,
         )
+
+    total = len(results)
+    baseline_harmful = sum(1 for row in results if str(row.get("baseline_guard_label", "")).upper() == "UNSAFE")
+    tuned_harmful = sum(1 for row in results if str(row.get("tuned_guard_label", "")).upper() == "UNSAFE")
+    baseline_rate = baseline_harmful / total if total > 0 else 0.0
+    tuned_rate = tuned_harmful / total if total > 0 else 0.0
+    print(
+        f"[eval:{dataset_name}] harmful output rate | baseline: {baseline_harmful}/{total} ({baseline_rate:.2%}) "
+        f"| tuned: {tuned_harmful}/{total} ({tuned_rate:.2%})"
+    )
+    print(f"[eval:{dataset_name}] results saved to {output_path}")
 
     hook_mgr.remove()
     applier.remove()
