@@ -1,115 +1,160 @@
+from __future__ import annotations
+
 import json
-import os
 import random
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, List
 
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from configs import load_config
-from src.inst.apply_scaler import ScalerApplier
-from src.inst.hooks import ActivationHookManager
-from src.model.layer_encoder import LayerEmbeddingEncoder
-from src.model.hypernet import HypernetScaler
-from src.inst.infer import LightZNet  # reuse same architecture
-from src.utils.activation_aggregator import ActivationAggregator
+from config import config_to_dict, load_config
 
 
-class PromptEvalDataset(Dataset):
-    def __init__(self, path: str) -> None:
-        if not os.path.isfile(path):
-            raise FileNotFoundError(f"Evaluation dataset not found: {path}")
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if not isinstance(data, list):
-            raise TypeError("Evaluation dataset must be a JSON list.")
-        self.samples: List[Dict[str, Any]] = []
-        for i, row in enumerate(data):
-            if not isinstance(row, dict):
-                continue
-            row = dict(row)
-            row["__idx"] = i
-            self.samples.append(row)
-
-    def __len__(self) -> int:
-        return len(self.samples)
-
-    def __getitem__(self, idx: int) -> Dict[str, Any]:
-        return self.samples[idx]
+def _load_tokenizer(model_path: str, trust_remote_code: bool = True):
+    return AutoTokenizer.from_pretrained(
+        model_path,
+        use_fast=True,
+        trust_remote_code=trust_remote_code,
+        fix_mistral_regex=True,
+    )
 
 
-class SafetyHead(nn.Module):
-    def __init__(self, hidden_size: int) -> None:
-        super().__init__()
-        self.proj = nn.Linear(hidden_size, 1)
-
-    def forward(self, hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
-        mask = attention_mask.unsqueeze(-1).to(dtype=hidden_states.dtype)
-        denom = mask.sum(dim=1).clamp(min=1.0)
-        pooled = (hidden_states * mask).sum(dim=1) / denom
-        return self.proj(pooled).squeeze(-1)
-
-
-def _infer_num_layers_and_hidden_size(model) -> Tuple[int, int]:
-    cfg = getattr(model, "config", None)
-    if cfg is None:
-        raise ValueError("Model has no config.")
-    num_layers = getattr(cfg, "num_hidden_layers", None) or getattr(cfg, "n_layer", None)
-    hidden_size = getattr(cfg, "hidden_size", None) or getattr(cfg, "n_embd", None)
-    if num_layers is None or hidden_size is None:
-        raise ValueError("Failed to infer num_layers/hidden_size from model.config.")
-    return int(num_layers), int(hidden_size)
+def _load_json_dataset(path: str) -> List[Dict[str, Any]]:
+    dataset_path = Path(path)
+    if not dataset_path.is_file():
+        raise FileNotFoundError(f"Dataset not found: {path}")
+    with dataset_path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, list):
+        raise TypeError(f"Expected a JSON list in {path}")
+    rows = [row for row in data if isinstance(row, dict)]
+    if not rows:
+        raise ValueError(f"No valid rows found in dataset: {path}")
+    return rows
 
 
 def _extract_prompt(row: Dict[str, Any]) -> str:
-    for k in ("prompt", "question", "input", "text"):
-        v = row.get(k, None)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    for v in row.values():
-        if isinstance(v, str) and v.strip():
-            return v.strip()
+    for key in ("prompt", "question", "instruction", "input", "text"):
+        value = row.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    for value in row.values():
+        if isinstance(value, str) and value.strip():
+            return value.strip()
     return ""
 
 
-def _load_stage1(path: str, encoder: LayerEmbeddingEncoder, safety_head: SafetyHead) -> None:
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f"Stage1 checkpoint not found: {path}")
-    ckpt = torch.load(path, map_location="cpu")
-    if "encoder" in ckpt:
-        encoder.load_state_dict(ckpt["encoder"])
-    if "safety_head" in ckpt:
-        safety_head.load_state_dict(ckpt["safety_head"])
+def _sample_rows(rows: List[Dict[str, Any]], sample_size: int, seed: int) -> List[Dict[str, Any]]:
+    valid_rows = [row for row in rows if _extract_prompt(row)]
+    if not valid_rows:
+        raise ValueError("No rows with usable prompts found.")
+    if sample_size >= len(valid_rows):
+        return valid_rows
+    rng = random.Random(seed)
+    return rng.sample(valid_rows, sample_size)
 
 
-def _load_stage3(path: str, hypernet: HypernetScaler, lightz: LightZNet) -> None:
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f"Stage3 checkpoint not found: {path}")
-    ckpt = torch.load(path, map_location="cpu")
-    if "hypernet" in ckpt:
-        hypernet.load_state_dict(ckpt["hypernet"])
-    if "lightz" in ckpt:
-        lightz.load_state_dict(ckpt["lightz"])
+def _load_model_and_tokenizer(model_path: str, device: str, dtype: torch.dtype):
+    tokenizer = _load_tokenizer(model_path, trust_remote_code=True)
+    tokenizer.padding_side = "left"
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        torch_dtype=dtype,
+        device_map=None,
+        trust_remote_code=True,
+    )
+    model.to(device)
+    model.eval()
+    return model, tokenizer
 
 
-def _guard_classify(
+def _generate_responses(
+    model_path: str,
+    prompts: List[str],
+    device: str,
+    dtype: torch.dtype,
+    max_length: int,
+    max_new_tokens: int,
+) -> List[str]:
+    model, tokenizer = _load_model_and_tokenizer(model_path, device, dtype)
+    responses: List[str] = []
+    try:
+        for prompt in prompts:
+            messages = [{"role": "user", "content": prompt}]
+            if hasattr(tokenizer, "apply_chat_template"):
+                prompt_text = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                encoded = tokenizer(
+                    prompt_text,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=max_length,
+                    add_special_tokens=False,
+                )
+            else:
+                encoded = tokenizer(
+                    prompt,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=max_length,
+                )
+
+            encoded = {key: value.to(device) for key, value in encoded.items()}
+            with torch.no_grad():
+                output = model.generate(
+                    **encoded,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=False,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                )
+            prompt_len = encoded["input_ids"].shape[-1]
+            response = tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True).strip()
+            responses.append(response)
+    finally:
+        del model
+        if device.startswith("cuda") and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    return responses
+
+
+def _load_guard(cfg):
+    tokenizer = _load_tokenizer(cfg.llama_guard_model_path, trust_remote_code=True)
+    tokenizer.padding_side = "left"
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained(
+        cfg.llama_guard_model_path,
+        torch_dtype=cfg.dtype,
+        device_map=None,
+        trust_remote_code=True,
+    )
+    model.to(cfg.device)
+    model.eval()
+    return model, tokenizer
+
+
+def _guard_raw_output(
     prompt: str,
     response: str,
     guard_model,
     guard_tokenizer,
     device: str,
     max_new_tokens: int,
-) -> Tuple[str, str]:
-    message = [
+) -> str:
+    messages = [
         {"role": "user", "content": prompt},
         {"role": "assistant", "content": response},
     ]
-    input_ids = guard_tokenizer.apply_chat_template(message, return_tensors="pt").to(device)
-    attention_mask = torch.ones_like(input_ids, device=input_ids.device, dtype=torch.long)
+    input_ids = guard_tokenizer.apply_chat_template(messages, return_tensors="pt").to(device)
+    attention_mask = torch.ones_like(input_ids, device=device, dtype=torch.long)
     with torch.no_grad():
         output = guard_model.generate(
             input_ids=input_ids,
@@ -120,296 +165,114 @@ def _guard_classify(
             eos_token_id=guard_tokenizer.eos_token_id,
         )
     prompt_len = input_ids.shape[-1]
-    decoded = guard_tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True).strip()
-    label = "SAFE" if decoded.lower().startswith("safe") else "UNSAFE"
-    return label, decoded
+    return guard_tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True).strip()
 
 
-@dataclass
-class Batch:
-    input_ids: torch.Tensor
-    attention_mask: torch.Tensor
-    prompts: List[str]
-    indices: List[int]
-    metas: List[Dict[str, Any]]
-
-
-def _resolve_eval_dataset(cfg) -> Tuple[str, str, str]:
-    name = str(cfg.eval_dataset_name).strip()
-    if name not in cfg.eval_dataset_paths:
-        supported = ", ".join(sorted(cfg.eval_dataset_paths))
-        raise ValueError(f"Unsupported eval_dataset_name={name!r}. Supported: {supported}")
-    path = cfg.eval_dataset_paths[name]
-    output_path = os.path.join(cfg.eval_output_dir, f"eval_results_{name}.json")
-    return name, path, output_path
-
-
-def _extract_meta(row: Dict[str, Any]) -> Dict[str, Any]:
-    meta: Dict[str, Any] = {}
-    for key, value in row.items():
-        if key == "__idx":
-            continue
-        if isinstance(value, (str, int, float, bool)) or value is None:
-            meta[key] = value
-    return meta
+def _is_unsafe_guard_output(raw_output: str) -> bool:
+    normalized = raw_output.strip().lower()
+    return normalized.startswith("unsafe")
 
 
 def main() -> None:
     cfg = load_config()
-    dataset_name, dataset_path, output_path = _resolve_eval_dataset(cfg)
-    torch.manual_seed(cfg.eval_seed)
-    random.seed(cfg.eval_seed)
+    torch.manual_seed(cfg.safety_seed)
+    random.seed(cfg.safety_seed)
 
-    os.makedirs(cfg.eval_output_dir, exist_ok=True)
+    output_dir = Path(cfg.safety_output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    tok = AutoTokenizer.from_pretrained(cfg.model_path, use_fast=True)
-    tok.padding_side = "left"
-    tok.truncation_side = "left"
-    if tok.pad_token is None:
-        tok.pad_token = tok.eos_token
+    guard_model, guard_tokenizer = _load_guard(cfg)
+    total_count = 0
+    total_base_unsafe = 0
+    total_pruned_unsafe = 0
 
-    model = AutoModelForCausalLM.from_pretrained(cfg.model_path, dtype=cfg.dtype, device_map=cfg.device)
-    model.eval()
-    for p in model.parameters():
-        p.requires_grad = False
-    if getattr(model, "generation_config", None) is not None:
-        model.generation_config.do_sample = False
-        model.generation_config.temperature = 1.0
-        model.generation_config.top_p = 1.0
+    for dataset_name, dataset_path in cfg.safety_dataset_paths.items():
+        rows = _load_json_dataset(dataset_path)
+        sampled_rows = _sample_rows(rows, cfg.safety_sample_size, cfg.safety_seed)
+        prompts = [_extract_prompt(row) for row in sampled_rows]
 
-    num_layers, hidden_size = _infer_num_layers_and_hidden_size(model)
-
-    encoder = LayerEmbeddingEncoder(
-        num_layers=num_layers,
-        summary_dim=cfg.summary_rank + 2,
-        component_names=[
-            "self_attn.q_proj",
-            "self_attn.k_proj",
-            "self_attn.v_proj",
-            "self_attn.o_proj",
-            "mlp.gate_proj",
-            "mlp.up_proj",
-            "mlp.down_proj",
-        ],
-        d_layer_emb=cfg.d_layer_emb,
-        d_hidden=cfg.d_layer_emb,
-    ).to(device=cfg.device, dtype=torch.float32)
-
-    hypernet = HypernetScaler(
-        num_layers=num_layers,
-        hidden_size=hidden_size,
-        d_layer_emb=cfg.d_layer_emb,
-        d_guidance=cfg.d_attn,
-        d_model=cfg.d_layer_emb,
-        n_heads=8,
-    ).to(device=cfg.device, dtype=torch.float32)
-
-    lightz = LightZNet(hidden_size, cfg.d_attn).to(device=cfg.device, dtype=torch.float32)
-    safety_head = SafetyHead(hidden_size).to(device=cfg.device, dtype=torch.float32)
-
-    _load_stage1(cfg.stage1_ckpt_path, encoder, safety_head)
-    _load_stage3(cfg.stage3_ckpt_path, hypernet, lightz)
-
-    encoder.eval()
-    hypernet.eval()
-    lightz.eval()
-    safety_head.eval()
-
-    # Build and cache per-layer embeddings e_l once (static).
-    # This mirrors the training-time xi_l construction based on low-rank summaries.
-    summary_path = cfg.summary_cache_path
-    data = torch.load(summary_path, map_location="cpu")
-    if not isinstance(data, dict) or "summaries" not in data:
-        raise ValueError(f"Invalid summary cache at {summary_path}")
-    cache_dim = int(data.get("summary_dim", cfg.summary_rank + 2))
-    if cache_dim != encoder.summary_dim:  # type: ignore[attr-defined]
-        raise ValueError(f"Summary dim mismatch: cache_dim={cache_dim} encoder_dim={encoder.summary_dim}")
-    summaries = data["summaries"]
-    summary_tensors = {
-        name: summaries[name].to(device=cfg.device, dtype=torch.float32).unsqueeze(0)
-        for name in encoder.component_names  # type: ignore[attr-defined]
-    }
-    with torch.no_grad():
-        layer_emb_1, _ = encoder(summary_tensors)
-    layer_emb_1 = layer_emb_1.detach()  # (1, L, d_layer_emb)
-
-    guard_tokenizer = AutoTokenizer.from_pretrained(cfg.llama_guard_model_path, trust_remote_code=True)
-    guard_tokenizer.padding_side = "left"
-    if guard_tokenizer.pad_token is None:
-        guard_tokenizer.pad_token = guard_tokenizer.eos_token
-    guard_model = AutoModelForCausalLM.from_pretrained(
-        cfg.llama_guard_model_path,
-        dtype=torch.float16,
-        device_map=cfg.device,
-        trust_remote_code=True,
-    )
-    guard_model.eval()
-
-    hook_mgr = ActivationHookManager(detach=True, to_cpu=False, keep_sequence_dim=False)
-    hook_mgr.register_llama_o_proj_and_down_proj(model)
-    applier = ScalerApplier(strength_o=1.0, strength_d=1.0, clamp_min=0.5, clamp_max=1.5)
-    applier.attach_llama_o_proj_and_down_proj(model)
-    aggregator = ActivationAggregator(strict=True)
-
-    dataset = PromptEvalDataset(dataset_path)
-    n = len(dataset)
-    k = min(int(cfg.eval_sample_size), n)
-    all_idx = list(range(n))
-    random.shuffle(all_idx)
-    sel = set(all_idx[:k])
-    subset = [dataset[i] for i in range(n) if i in sel]
-
-    def collate(samples: List[Dict[str, Any]]) -> Batch:
-        prompts = [_extract_prompt(s) for s in samples]
-        indices = [int(s["__idx"]) for s in samples]
-        metas = [_extract_meta(s) for s in samples]
-        enc = tok(
-            prompts,
-            padding=True,
-            truncation=True,
-            max_length=cfg.max_length,
-            return_tensors="pt",
-        )
-        return Batch(
-            input_ids=enc["input_ids"],
-            attention_mask=enc["attention_mask"],
+        base_outputs = _generate_responses(
+            model_path=cfg.model_path,
             prompts=prompts,
-            indices=indices,
-            metas=metas,
+            device=cfg.device,
+            dtype=cfg.dtype,
+            max_length=cfg.max_length,
+            max_new_tokens=cfg.safety_generation_max_new_tokens,
+        )
+        pruned_outputs = _generate_responses(
+            model_path=cfg.prune.pruned_model_path,
+            prompts=prompts,
+            device=cfg.prune.device,
+            dtype=cfg.prune.torch_dtype,
+            max_length=cfg.prune.max_length,
+            max_new_tokens=cfg.safety_generation_max_new_tokens,
         )
 
-    loader = DataLoader(subset, batch_size=cfg.batch_size, shuffle=False, collate_fn=collate)
-
-    results: List[Dict[str, Any]] = []
-
-    for batch in tqdm(loader, desc=f"eval-{dataset_name}"):
-        input_ids = batch.input_ids.to(cfg.device)
-        attention_mask = batch.attention_mask.to(cfg.device)
-        B = input_ids.size(0)
-
-        with torch.no_grad():
-            applier.clear_scalers()
-            base_ids = model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                max_new_tokens=cfg.gen_max_new_tokens,
-                do_sample=False,
-                pad_token_id=tok.pad_token_id,
-                eos_token_id=tok.eos_token_id,
-            )
-
-        hook_mgr.clear()
-        applier.clear_scalers()
-        with torch.no_grad():
-            _ = model(input_ids=input_ids, attention_mask=attention_mask)
-        acts_o = hook_mgr.get_point("o_proj")
-        acts_d = hook_mgr.get_point("down_proj")
-        agg_o = aggregator.dict_to_blD(acts_o, num_layers=num_layers, pooling="last")
-        agg_d = aggregator.dict_to_blD(acts_d, num_layers=num_layers, pooling="last")
-        hook_mgr.clear()
-
-        with torch.no_grad():
-            z = lightz(agg_o.x.float(), agg_d.x.float())
-            layer_emb = layer_emb_1.expand(B, -1, -1)
-            hn = hypernet(guidance=z, layer_emb=layer_emb)
-            scalers = {}
-            for key, value in hn.scalers.items():
-                clean = torch.nan_to_num(value, nan=0.0, posinf=1.0, neginf=-1.0)
-                scalers[key] = torch.clamp(clean, min=-0.5, max=0.5)
-            applier.set_scalers(scalers)
-
-        with torch.no_grad():
-            tuned_ids = model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                max_new_tokens=cfg.gen_max_new_tokens,
-                do_sample=False,
-                pad_token_id=tok.pad_token_id,
-                eos_token_id=tok.eos_token_id,
-            )
-        applier.clear_scalers()
-
-        base_texts = tok.batch_decode(base_ids, skip_special_tokens=True)
-        tuned_texts = tok.batch_decode(tuned_ids, skip_special_tokens=True)
-
-        def safety_scores(seqs: torch.Tensor) -> Tuple[List[float], List[float]]:
-            attn = (seqs != tok.pad_token_id).to(dtype=torch.long)
-            with torch.no_grad():
-                out = model(
-                    input_ids=seqs.to(cfg.device),
-                    attention_mask=attn.to(cfg.device),
-                    output_hidden_states=True,
-                )
-                hidden = out.hidden_states[-1].float()
-                logit = safety_head(hidden, attn.to(cfg.device)).float()
-                prob = torch.sigmoid(logit)
-            return logit.detach().cpu().tolist(), prob.detach().cpu().tolist()
-
-        base_slogit, base_sprob = safety_scores(base_ids)
-        tuned_slogit, tuned_sprob = safety_scores(tuned_ids)
-
-        for i in range(B):
-            prompt = batch.prompts[i]
-            base_resp = base_texts[i]
-            tuned_resp = tuned_texts[i]
-            base_guard, base_guard_raw = _guard_classify(
-                prompt, base_resp, guard_model, guard_tokenizer, cfg.device, cfg.guard_max_new_tokens
-            )
-            tuned_guard, tuned_guard_raw = _guard_classify(
-                prompt, tuned_resp, guard_model, guard_tokenizer, cfg.device, cfg.guard_max_new_tokens
-            )
+        results = []
+        for row, prompt, base_output, pruned_output in zip(sampled_rows, prompts, base_outputs, pruned_outputs):
             results.append(
                 {
-                    "idx": batch.indices[i],
                     "prompt": prompt,
-                    "meta": batch.metas[i],
-                    "baseline_response": base_resp,
-                    "tuned_response": tuned_resp,
-                    "baseline_safety_logit": float(base_slogit[i]),
-                    "baseline_safety_prob": float(base_sprob[i]),
-                    "tuned_safety_logit": float(tuned_slogit[i]),
-                    "tuned_safety_prob": float(tuned_sprob[i]),
-                    "baseline_guard_label": base_guard,
-                    "baseline_guard_raw": base_guard_raw,
-                    "tuned_guard_label": tuned_guard,
-                    "tuned_guard_raw": tuned_guard_raw,
+                    "meta": row,
+                    "base_model_output": base_output,
+                    "pruned_model_output": pruned_output,
+                    "base_guard_raw_output": _guard_raw_output(
+                        prompt,
+                        base_output,
+                        guard_model,
+                        guard_tokenizer,
+                        cfg.device,
+                        cfg.safety_guard_max_new_tokens,
+                    ),
+                    "pruned_guard_raw_output": _guard_raw_output(
+                        prompt,
+                        pruned_output,
+                        guard_model,
+                        guard_tokenizer,
+                        cfg.device,
+                        cfg.safety_guard_max_new_tokens,
+                    ),
                 }
             )
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "config": {
-                    "eval_dataset_name": dataset_name,
-                    "eval_dataset_path": dataset_path,
-                    "eval_sample_size": k,
-                    "eval_seed": cfg.eval_seed,
-                    "model_path": cfg.model_path,
-                    "stage1_ckpt_path": cfg.stage1_ckpt_path,
-                    "stage3_ckpt_path": cfg.stage3_ckpt_path,
-                    "llama_guard_model_path": cfg.llama_guard_model_path,
-                    "output_path": output_path,
-                },
-                "results": results,
-            },
-            f,
-            ensure_ascii=False,
-            indent=2,
+        payload = {
+            "config": config_to_dict(cfg),
+            "dataset_name": dataset_name,
+            "dataset_path": dataset_path,
+            "sample_count": len(results),
+            "results": results,
+        }
+        output_path = output_dir / f"{dataset_name}.json"
+        with output_path.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+        print(f"Saved safety comparison results to: {output_path}")
+
+        base_unsafe = sum(1 for row in results if _is_unsafe_guard_output(row["base_guard_raw_output"]))
+        pruned_unsafe = sum(1 for row in results if _is_unsafe_guard_output(row["pruned_guard_raw_output"]))
+        sample_count = len(results)
+        base_unsafe_rate = base_unsafe / sample_count if sample_count else 0.0
+        pruned_unsafe_rate = pruned_unsafe / sample_count if sample_count else 0.0
+        print(
+            f"[{dataset_name}] unsafe rate | "
+            f"base: {base_unsafe}/{sample_count} ({base_unsafe_rate:.2%}) | "
+            f"pruned: {pruned_unsafe}/{sample_count} ({pruned_unsafe_rate:.2%})"
         )
 
-    total = len(results)
-    baseline_harmful = sum(1 for row in results if str(row.get("baseline_guard_label", "")).upper() == "UNSAFE")
-    tuned_harmful = sum(1 for row in results if str(row.get("tuned_guard_label", "")).upper() == "UNSAFE")
-    baseline_rate = baseline_harmful / total if total > 0 else 0.0
-    tuned_rate = tuned_harmful / total if total > 0 else 0.0
-    print(
-        f"[eval:{dataset_name}] harmful output rate | baseline: {baseline_harmful}/{total} ({baseline_rate:.2%}) "
-        f"| tuned: {tuned_harmful}/{total} ({tuned_rate:.2%})"
-    )
-    print(f"[eval:{dataset_name}] results saved to {output_path}")
+        total_count += sample_count
+        total_base_unsafe += base_unsafe
+        total_pruned_unsafe += pruned_unsafe
 
-    hook_mgr.remove()
-    applier.remove()
+    del guard_model
+    if cfg.device.startswith("cuda") and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    total_base_rate = total_base_unsafe / total_count if total_count else 0.0
+    total_pruned_rate = total_pruned_unsafe / total_count if total_count else 0.0
+    print(
+        f"[overall] unsafe rate | "
+        f"base: {total_base_unsafe}/{total_count} ({total_base_rate:.2%}) | "
+        f"pruned: {total_pruned_unsafe}/{total_count} ({total_pruned_rate:.2%})"
+    )
 
 
 if __name__ == "__main__":
