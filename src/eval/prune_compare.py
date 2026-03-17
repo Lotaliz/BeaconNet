@@ -1,14 +1,33 @@
 from __future__ import annotations
 
+import argparse
 import json
 import random
 from pathlib import Path
 from typing import Any, Dict, List
 
 import torch
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from config import config_to_dict, load_config
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Compare generations from base and pruned models.")
+    parser.add_argument(
+        "-m",
+        "--model-path",
+        default=None,
+        help="Optional base model path override. Defaults to cfg.model_path.",
+    )
+    parser.add_argument(
+        "-p",
+        "--pruned-model-path",
+        default=None,
+        help="Optional pruned model path override. Defaults to cfg.prune.pruned_model_path.",
+    )
+    return parser.parse_args()
 
 
 def _load_alpaca_samples(path: str, sample_size: int, seed: int) -> List[Dict[str, Any]]:
@@ -74,12 +93,13 @@ def _generate_responses(
     dtype: torch.dtype,
     max_length: int,
     max_new_tokens: int,
+    desc: str,
 ) -> List[str]:
     model, tokenizer = _load_model_and_tokenizer(model_path, device, dtype)
     responses: List[str] = []
 
     try:
-        for prompt in prompts:
+        for prompt in tqdm(prompts, desc=desc):
             messages = [{"role": "user", "content": prompt}]
             if hasattr(tokenizer, "apply_chat_template"):
                 input_text = tokenizer.apply_chat_template(
@@ -123,7 +143,10 @@ def _generate_responses(
 
 
 def main() -> None:
+    args = _parse_args()
     cfg = load_config()
+    model_path = args.model_path or cfg.model_path
+    pruned_model_path = args.pruned_model_path or cfg.prune.pruned_model_path
     output_path = Path(cfg.prune_eval_output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -135,20 +158,22 @@ def main() -> None:
     prompts = [_build_prompt(row) for row in rows]
 
     base_outputs = _generate_responses(
-        model_path=cfg.model_path,
+        model_path=model_path,
         prompts=prompts,
         device=cfg.device,
         dtype=cfg.dtype,
         max_length=cfg.max_length,
         max_new_tokens=cfg.prune_eval_max_new_tokens,
+        desc="prune-compare:base",
     )
     pruned_outputs = _generate_responses(
-        model_path=cfg.prune.pruned_model_path,
+        model_path=pruned_model_path,
         prompts=prompts,
         device=cfg.prune.device,
         dtype=cfg.prune.torch_dtype,
         max_length=cfg.prune.max_length,
         max_new_tokens=cfg.prune_eval_max_new_tokens,
+        desc="prune-compare:pruned",
     )
 
     results = []

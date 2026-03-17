@@ -29,28 +29,25 @@ def _load_report(path: str) -> Dict[str, Any]:
 def _report_has_full_vectors(report: Dict[str, Any]) -> bool:
     if report.get("has_full_activation_vector") is True:
         return True
-    for item in report.get("results", []):
-        if not isinstance(item, dict):
-            continue
-        layers = item.get("layers", {})
-        if not isinstance(layers, dict):
-            continue
-        for layer in layers.values():
-            if isinstance(layer, dict) and isinstance(layer.get("activation_vector"), list):
-                return True
+    categories = report.get("categories", {})
+    if isinstance(categories, dict):
+        for item in categories.values():
+            if not isinstance(item, dict):
+                continue
+            layers = item.get("layers", {})
+            if not isinstance(layers, dict):
+                continue
+            for layer in layers.values():
+                if isinstance(layer, dict) and isinstance(layer.get("avg_activation_vector"), list):
+                    return True
     return False
 
 
-def _prompt_map(report: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-    results = report.get("results", [])
-    mapping: Dict[str, Dict[str, Any]] = {}
-    for item in results:
-        if not isinstance(item, dict):
-            continue
-        prompt = item.get("prompt", "")
-        if isinstance(prompt, str) and prompt.strip():
-            mapping[prompt] = item
-    return mapping
+def _category_map(report: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    categories = report.get("categories", {})
+    if isinstance(categories, dict):
+        return {key: value for key, value in categories.items() if isinstance(value, dict)}
+    return {}
 
 
 def _escape(text: str) -> str:
@@ -92,7 +89,7 @@ def _layer_sort_key(layer_name: str) -> tuple[int, int, str]:
 
 
 def _lookup_value(layer: Dict[str, Any], neuron_index: int) -> float | None:
-    vector = layer.get("activation_vector")
+    vector = layer.get("avg_activation_vector")
     if isinstance(vector, list) and 0 <= neuron_index < len(vector):
         return float(vector[neuron_index])
 
@@ -142,23 +139,25 @@ def _build_layer_cards(base_layers: Dict[str, Any], target_layers: Dict[str, Any
     return cards
 
 
-def _summarize_prompt(prompt: str, base_item: Dict[str, Any], target_item: Dict[str, Any]) -> Dict[str, Any]:
+def _summarize_category(category_name: str, base_item: Dict[str, Any], target_item: Dict[str, Any]) -> Dict[str, Any]:
     cards = _build_layer_cards(base_item.get("layers", {}), target_item.get("layers", {}))
     if not cards:
-        return {"prompt": prompt, "layer_cards": [], "layer_count": 0}
+        return {"category_name": category_name, "layer_cards": [], "layer_count": 0}
     same_peak_count = sum(1 for card in cards if card["base_peak_neuron"] == card["target_peak_neuron"])
     return {
-        "prompt": prompt,
+        "category_name": category_name,
         "layer_cards": cards,
         "layer_count": len(cards),
         "same_peak_neuron_count": same_peak_count,
+        "base_sample_count": int(base_item.get("sample_count", 0)),
+        "target_sample_count": int(target_item.get("sample_count", 0)),
     }
 
 
-def _render_prompt_section(summary: Dict[str, Any]) -> str:
+def _render_category_section(summary: Dict[str, Any]) -> str:
     cards = summary["layer_cards"]
     if not cards:
-        return f"<section class='prompt-card'><h2>{_escape(summary['prompt'])}</h2><p>No shared layers found.</p></section>"
+        return f"<section class='prompt-card'><h2>{_escape(summary['category_name'])}</h2><p>No shared layers found.</p></section>"
 
     layer_blocks = []
     for card in cards:
@@ -200,10 +199,12 @@ def _render_prompt_section(summary: Dict[str, Any]) -> str:
 
     return (
         "<section class='prompt-card'>"
-        f"<h2>{_escape(summary['prompt'])}</h2>"
+        f"<h2>{_escape(summary['category_name'])}</h2>"
         "<div class='stats'>"
         f"<div><strong>Layers</strong><span>{summary['layer_count']}</span></div>"
         f"<div><strong>Same peak neuron</strong><span>{summary['same_peak_neuron_count']}/{summary['layer_count']}</span></div>"
+        f"<div><strong>Base samples</strong><span>{summary['base_sample_count']}</span></div>"
+        f"<div><strong>Target samples</strong><span>{summary['target_sample_count']}</span></div>"
         "<div><strong>Rule</strong><span>Base top-k plus target values at same neuron ids</span></div>"
         "<div><strong>Display</strong><span>Target top-k neurons are merged in and duplicates are removed</span></div>"
         "</div>"
@@ -213,7 +214,7 @@ def _render_prompt_section(summary: Dict[str, Any]) -> str:
 
 
 def _render_html(base_path: str, target_path: str, summaries: List[Dict[str, Any]]) -> str:
-    sections = "".join(_render_prompt_section(summary) for summary in summaries)
+    sections = "".join(_render_category_section(summary) for summary in summaries)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -330,11 +331,11 @@ def _render_html(base_path: str, target_path: str, summaries: List[Dict[str, Any
 <body>
   <main>
     <h1>Activation Pattern Compare</h1>
-    <p class="lede">This view compares peak neuron identity and activation strength across matching prompts and layers.</p>
+    <p class="lede">This view compares average activation patterns across matching categories and layers.</p>
     <div class="meta">
       <div><strong>Base report</strong><span>{_escape(base_path)}</span></div>
       <div><strong>Target report</strong><span>{_escape(target_path)}</span></div>
-      <div><strong>Shared prompts</strong><span>{len(summaries)}</span></div>
+      <div><strong>Shared categories</strong><span>{len(summaries)}</span></div>
     </div>
     {sections}
   </main>
@@ -355,16 +356,16 @@ def main() -> None:
     target_report = _load_report(target_path)
     base_has_full = _report_has_full_vectors(base_report)
     target_has_full = _report_has_full_vectors(target_report)
-    base_map = _prompt_map(base_report)
-    target_map = _prompt_map(target_report)
+    base_map = _category_map(base_report)
+    target_map = _category_map(target_report)
 
-    shared_prompts = [prompt for prompt in base_map if prompt in target_map]
-    if not shared_prompts:
-        raise ValueError("No shared prompts found between activation reports.")
+    shared_categories = [category_name for category_name in base_map if category_name in target_map]
+    if not shared_categories:
+        raise ValueError("No shared categories found between activation reports.")
 
     summaries = [
-        _summarize_prompt(prompt, base_map[prompt], target_map[prompt])
-        for prompt in shared_prompts
+        _summarize_category(category_name, base_map[category_name], target_map[category_name])
+        for category_name in shared_categories
     ]
 
     html = _render_html(base_path, target_path, summaries)

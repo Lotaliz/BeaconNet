@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import random
 from pathlib import Path
@@ -9,6 +10,23 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from config import config_to_dict, load_config
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Evaluate safety of base and pruned models.")
+    parser.add_argument(
+        "-m",
+        "--model-path",
+        default=None,
+        help="Optional base model path override. Defaults to cfg.model_path.",
+    )
+    parser.add_argument(
+        "-p",
+        "--pruned-model-path",
+        default=None,
+        help="Optional pruned model path override. Defaults to cfg.prune.pruned_model_path.",
+    )
+    return parser.parse_args()
 
 
 def _load_tokenizer(model_path: str, trust_remote_code: bool = True):
@@ -174,7 +192,10 @@ def _is_unsafe_guard_output(raw_output: str) -> bool:
 
 
 def main() -> None:
+    args = _parse_args()
     cfg = load_config()
+    model_path = args.model_path or cfg.model_path
+    pruned_model_path = args.pruned_model_path or cfg.prune.pruned_model_path
     torch.manual_seed(cfg.safety_seed)
     random.seed(cfg.safety_seed)
 
@@ -192,7 +213,7 @@ def main() -> None:
         prompts = [_extract_prompt(row) for row in sampled_rows]
 
         base_outputs = _generate_responses(
-            model_path=cfg.model_path,
+            model_path=model_path,
             prompts=prompts,
             device=cfg.device,
             dtype=cfg.dtype,
@@ -200,7 +221,7 @@ def main() -> None:
             max_new_tokens=cfg.safety_generation_max_new_tokens,
         )
         pruned_outputs = _generate_responses(
-            model_path=cfg.prune.pruned_model_path,
+            model_path=pruned_model_path,
             prompts=prompts,
             device=cfg.prune.device,
             dtype=cfg.prune.torch_dtype,
