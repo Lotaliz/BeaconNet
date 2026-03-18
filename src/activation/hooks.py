@@ -28,14 +28,38 @@ class AverageActivationSummary:
     avg_activation_vector: List[float]
 
 
+def _is_supported_linear(module: nn.Module) -> bool:
+    if isinstance(module, nn.Linear):
+        return True
+    base_layer = getattr(module, "base_layer", None)
+    return isinstance(base_layer, nn.Linear)
+
+
+def _matches_target_suffix(name: str, target_names: Iterable[str]) -> bool:
+    parts = name.split(".")
+    if not parts:
+        return False
+    last = parts[-1]
+    prev = parts[-2] if len(parts) >= 2 else ""
+    for target_name in target_names:
+        if last == target_name:
+            return True
+        if last == "base_layer" and prev == target_name:
+            return True
+    return False
+
+
 def find_target_modules(model: nn.Module, target_names: Iterable[str]) -> Dict[str, nn.Module]:
     suffixes = tuple(target_names)
     modules: Dict[str, nn.Module] = {}
     for name, module in model.named_modules():
-        if isinstance(module, nn.Linear) and name.endswith(suffixes):
+        if _is_supported_linear(module) and _matches_target_suffix(name, suffixes):
             modules[name] = module
     if not modules:
-        raise ValueError("No target linear modules found for activation inspection.")
+        raise ValueError(
+            "No target linear modules found for activation inspection. "
+            "Check target_linear_names or whether the model is wrapped by PEFT/LoRA."
+        )
     return modules
 
 

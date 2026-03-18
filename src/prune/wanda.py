@@ -14,7 +14,10 @@ from config import config_to_dict, load_config
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prune a model with Wanda.")
-    parser.add_argument("-s", "--sparsity-ratio", type=float, default=0.6, help="Prune sparsity ratio, e.g. 0.5 or 0.7.")
+    parser.add_argument("-n", "--name", type=str, default=None)
+    parser.add_argument("-m", "--model", type=str, default=None, help="Base model directory to prune.")
+    parser.add_argument("-a", "--adapter-path", type=str, default=None, help="Optional LoRA adapter directory to merge before pruning.")
+    parser.add_argument("-s", "--sparsity-ratio", type=float, default=None, help="Prune sparsity ratio, e.g. 0.5 or 0.7.")
     return parser.parse_args()
 
 
@@ -171,12 +174,70 @@ def _count_zero_weights(model: nn.Module, target_names: Iterable[str]) -> tuple[
     return zeros, total
 
 
+def _looks_like_adapter_dir(path: str | None) -> bool:
+    if not path:
+        return False
+    return (Path(path) / 'adapter_config.json').is_file()
+
+
+def _resolve_model_and_adapter_paths(model_path: str, adapter_path: str | None) -> tuple[str, str | None]:
+    if adapter_path:
+        return model_path, adapter_path
+
+    if _looks_like_adapter_dir(model_path):
+        adapter_cfg_path = Path(model_path) / 'adapter_config.json'
+        with adapter_cfg_path.open('r', encoding='utf-8') as handle:
+            adapter_cfg = json.load(handle)
+        base_model_path = str(adapter_cfg.get('base_model_name_or_path', '')).strip()
+        if not base_model_path:
+            raise ValueError(f'LoRA adapter config is missing base_model_name_or_path: {adapter_cfg_path}')
+        return base_model_path, model_path
+
+    return model_path, None
+
+
+def _load_model_for_pruning(model_path: str, adapter_path: str | None, torch_dtype: torch.dtype):
+    tokenizer_source = adapter_path or model_path
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_source, use_fast=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = 'left'
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        torch_dtype=torch_dtype,
+        device_map=None,
+    )
+    if adapter_path:
+        try:
+            from peft import PeftModel
+        except ImportError as exc:
+            raise RuntimeError(
+                'Pruning a LoRA-aligned model requires `peft`. Install it before running wanda.py.'
+            ) from exc
+        model = PeftModel.from_pretrained(model, adapter_path)
+        model = model.merge_and_unload()
+
+    return model, tokenizer
+
+
 def main() -> None:
     args = _parse_args()
     cfg = load_config()
     prune_cfg = cfg.prune
+    if args.name is not None:
+        prune_cfg.model_name = args.name
+    if args.model is not None:
+        prune_cfg.model_path = args.model
+    if args.adapter_path is not None:
+        prune_cfg.lora_adapter_path = args.adapter_path
     if args.sparsity_ratio is not None:
         prune_cfg.sparsity_ratio = args.sparsity_ratio
+
+    resolved_model_path, resolved_adapter_path = _resolve_model_and_adapter_paths(
+        prune_cfg.model_path,
+        prune_cfg.lora_adapter_path,
+    )
 
     random.seed(prune_cfg.seed)
     torch.manual_seed(prune_cfg.seed)
@@ -184,15 +245,10 @@ def main() -> None:
     output_dir = Path(prune_cfg.save_path)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    tokenizer = AutoTokenizer.from_pretrained(prune_cfg.model_path, use_fast=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "left"
-
-    model = AutoModelForCausalLM.from_pretrained(
-        prune_cfg.model_path,
+    model, tokenizer = _load_model_for_pruning(
+        model_path=resolved_model_path,
+        adapter_path=resolved_adapter_path,
         torch_dtype=prune_cfg.torch_dtype,
-        device_map=None,
     )
     model.to(prune_cfg.device)
     model.eval()
@@ -219,23 +275,27 @@ def main() -> None:
     tokenizer.save_pretrained(output_dir)
 
     summary = {
-        "config": config_to_dict(cfg),
-        "prune": {
-            "method": "wanda",
-            "layer_sparsity": layer_sparsity,
-            "zero_params": zero_count,
-            "total_params": total_count,
-            "global_sparsity": (zero_count / total_count) if total_count else 0.0,
-            "calibration_prompt_count": len(prompts),
-            "output_dir": str(output_dir),
+        'config': config_to_dict(cfg),
+        'prune': {
+            'method': 'wanda',
+            'base_model_path': resolved_model_path,
+            'lora_adapter_path': resolved_adapter_path or '',
+            'layer_sparsity': layer_sparsity,
+            'zero_params': zero_count,
+            'total_params': total_count,
+            'global_sparsity': (zero_count / total_count) if total_count else 0.0,
+            'calibration_prompt_count': len(prompts),
+            'output_dir': str(output_dir),
         },
     }
-    with (output_dir / "prune_summary.json").open("w", encoding="utf-8") as handle:
+    with (output_dir / 'prune_summary.json').open('w', encoding='utf-8') as handle:
         json.dump(summary, handle, ensure_ascii=False, indent=2)
 
-    print(f"Wanda pruning complete. Saved pruned model to: {output_dir}")
+    if resolved_adapter_path:
+        print(f'Merged LoRA adapter before pruning: {resolved_adapter_path}')
+    print(f'Wanda pruning complete. Saved pruned model to: {output_dir}')
     print(f"Global sparsity over target linear layers: {summary['prune']['global_sparsity']:.2%}")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

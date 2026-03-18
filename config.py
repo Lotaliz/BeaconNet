@@ -39,14 +39,22 @@ def _activation_report_filename(model_path: str) -> str:
     return f"report-base-{model_dir}.json"
 
 
+def _activation_report_filename_with_adapter(model_path: str, adapter_path: str = "") -> str:
+    base_name = _activation_report_filename(model_path).removesuffix(".json")
+    if adapter_path:
+        return f"{base_name}-adapter-{Path(adapter_path).name}.json"
+    return f"{base_name}.json"
+
+
 @dataclass
 class PruneConfig:
     method: str = "wanda"
     model_name: str = "llama3.1-8B-Instruct"
     model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
+    lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
     calibration_data_path: str = str(SRC_ROOT / "test.jsonl")
     output_root: str = str(MODELS_ROOT / "pruned")
-    output_name_prefix: str = "llama3.1-8B-Instruct-wanda"
+    output_name_prefix: str = "llama3.1-8B-Instruct-dpo-wanda"
     device: str = "cuda" if CUDA_AVAILABLE else "cpu"
     torch_dtype: torch.dtype = torch.float16 if CUDA_AVAILABLE else torch.float32
     sparsity_ratio: float = 0.60
@@ -86,10 +94,14 @@ class ActivationConfig:
     model_name: str = "llama3.1-8B-Instruct-0.6"
     # model_path: str = str(MODELS_ROOT / "pruned" / "llama3.1-8B-Instruct-wanda-0.6")
     model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
+    lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
+    use_lora_adapter: bool = False
     output_dir: str = str(DATA_ROOT / "activation")
     compare_base_file: str = str(DATA_ROOT / "activation" / "report-base-llama3.1-8B-Instruct.json")
     compare_target_file: str = str(DATA_ROOT / "activation" / "report-0.6-llama3.1-8B-Instruct.json")
     compare_output_file: str = "activation_compare.html"
+    path_compare_dir: str = str(DATA_ROOT / "activation" / "path_compare")
+    path_compare_index_file: str = "activation_path_compare.html"
     dataset_path: str = str(DATASETS_ROOT / "advbench" / "data" / "advbench_clean.json")
     prompt_fields: tuple[str, ...] = ("original_prompt", "paraphrase")
     max_samples_per_field: int = 0
@@ -111,7 +123,8 @@ class ActivationConfig:
 
     @property
     def output_path(self) -> str:
-        return str(Path(self.output_dir) / _activation_report_filename(self.model_path))
+        adapter_path = self.lora_adapter_path if self.use_lora_adapter else ""
+        return str(Path(self.output_dir) / _activation_report_filename_with_adapter(self.model_path, adapter_path))
 
     @property
     def output_file(self) -> str:
@@ -120,6 +133,10 @@ class ActivationConfig:
     @property
     def compare_output_path(self) -> str:
         return str(Path(self.output_dir) / self.compare_output_file)
+
+    @property
+    def path_compare_index_path(self) -> str:
+        return str(Path(self.path_compare_dir) / self.path_compare_index_file)
 
 
 @dataclass
@@ -250,6 +267,8 @@ def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
         "activation": {
             "model_name": activation.model_name,
             "model_path": activation.model_path,
+            "lora_adapter_path": activation.lora_adapter_path,
+            "use_lora_adapter": activation.use_lora_adapter,
             "output_dir": activation.output_dir,
             "output_file": activation.output_file,
             "output_path": activation.output_path,
@@ -257,6 +276,9 @@ def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
             "compare_target_file": activation.compare_target_file,
             "compare_output_file": activation.compare_output_file,
             "compare_output_path": activation.compare_output_path,
+            "path_compare_dir": activation.path_compare_dir,
+            "path_compare_index_file": activation.path_compare_index_file,
+            "path_compare_index_path": activation.path_compare_index_path,
             "dataset_path": activation.dataset_path,
             "prompt_fields": list(activation.prompt_fields),
             "max_samples_per_field": activation.max_samples_per_field,
@@ -308,6 +330,7 @@ def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
             "method": prune.method,
             "model_name": prune.model_name,
             "model_path": prune.model_path,
+            "lora_adapter_path": prune.lora_adapter_path,
             "calibration_data_path": prune.calibration_data_path,
             "output_root": prune.output_root,
             "output_name": prune.output_name,

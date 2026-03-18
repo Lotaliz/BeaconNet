@@ -1,3 +1,5 @@
 datasets
 models
 *.pyc
+.vscode
+data/activation

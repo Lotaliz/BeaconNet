@@ -8,13 +8,14 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from config import _activation_report_filename, config_to_dict, load_config
+from config import _activation_report_filename_with_adapter, config_to_dict, load_config
 from src.activation.hooks import AverageActivationCollector
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Inspect average model activations over dataset prompt fields.")
     parser.add_argument(
+        "-m",
         "--model-path",
         default=None,
         help="Optional model path override. Defaults to config.activation.model_path.",
@@ -28,6 +29,12 @@ def _parse_args() -> argparse.Namespace:
         "--dataset-path",
         default=None,
         help="Optional dataset JSON path override. Defaults to config.activation.dataset_path.",
+    )
+    parser.add_argument(
+        "-a",
+        "--adapter-path",
+        default=None,
+        help="Optional LoRA adapter path. If set, load the adapter on top of the base model before inspection.",
     )
     return parser.parse_args()
 
@@ -52,6 +59,24 @@ def _load_dataset(path: str) -> List[Dict[str, object]]:
     return [row for row in data if isinstance(row, dict)]
 
 
+def _load_model(model_path: str, adapter_path: str, dtype: torch.dtype):
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        torch_dtype=dtype,
+        device_map=None,
+        trust_remote_code=True,
+    )
+    if adapter_path:
+        try:
+            from peft import PeftModel
+        except ImportError as exc:
+            raise RuntimeError(
+                "LoRA adapter loading requires `peft`. Install it first, for example: `pip install peft`."
+            ) from exc
+        model = PeftModel.from_pretrained(model, adapter_path, is_trainable=False)
+    return model
+
+
 def _iter_category_prompts(rows: List[Dict[str, object]], field_name: str, max_samples: int) -> List[str]:
     prompts: List[str] = []
     for row in rows:
@@ -70,11 +95,18 @@ def main() -> None:
     cfg = load_config()
     act_cfg = cfg.activation
     model_path = args.model_path or act_cfg.model_path
-    model_name = Path(model_path).name
+    adapter_path = args.adapter_path if args.adapter_path is not None else (
+        act_cfg.lora_adapter_path if act_cfg.use_lora_adapter else ""
+    )
+    model_name = Path(adapter_path).name if adapter_path else Path(model_path).name
     dataset_path = args.dataset_path or act_cfg.dataset_path
     rows = _load_dataset(dataset_path)
 
-    output_path = Path(args.output) if args.output else Path(act_cfg.output_dir) / _activation_report_filename(model_path)
+    output_path = (
+        Path(args.output)
+        if args.output
+        else Path(act_cfg.output_dir) / _activation_report_filename_with_adapter(model_path, adapter_path)
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     tokenizer = _load_tokenizer(model_path)
@@ -82,11 +114,10 @@ def main() -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path,
-        torch_dtype=act_cfg.torch_dtype,
-        device_map=None,
-        trust_remote_code=True,
+    model = _load_model(
+        model_path=model_path,
+        adapter_path=adapter_path,
+        dtype=act_cfg.torch_dtype,
     )
     model.to(act_cfg.device)
     model.eval()
@@ -166,6 +197,7 @@ def main() -> None:
     payload = {
         "config": config_to_dict(cfg),
         "activation_model_path": model_path,
+        "lora_adapter_path": adapter_path,
         "dataset_path": dataset_path,
         "has_full_activation_vector": bool(act_cfg.save_full_vector),
         "category_count": len(categories),
