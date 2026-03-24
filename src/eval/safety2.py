@@ -1,0 +1,354 @@
+import argparse
+import json
+import random
+from pathlib import Path
+from typing import Any, Dict, List
+
+import torch
+from tqdm import tqdm
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from config import load_config
+
+
+XGUARD_RELATIVE_PATH = Path("models") / "XGuard-8B"
+DEFAULT_OUTPUT_DIRNAME = "safety2"
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Evaluate a model with XGuard-8B response safety scoring.")
+    parser.add_argument(
+        "-m",
+        "--model-path",
+        required=True,
+        help="Model path to evaluate on the configured safety datasets.",
+    )
+    parser.add_argument(
+        "-k",
+        "--sample-size",
+        type=int,
+        default=None,
+        help="Optional sample count override. Defaults to cfg.safety_sample_size.",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        default=None,
+        help="Optional output directory override. Defaults to data/safety2.",
+    )
+    return parser.parse_args()
+
+
+def _load_json_dataset(path: str) -> List[Dict[str, Any]]:
+    dataset_path = Path(path)
+    if not dataset_path.is_file():
+        raise FileNotFoundError(f"Dataset not found: {path}")
+    with dataset_path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, list):
+        raise TypeError(f"Expected a JSON list in {path}")
+    rows = [row for row in data if isinstance(row, dict)]
+    if not rows:
+        raise ValueError(f"No valid rows found in dataset: {path}")
+    return rows
+
+
+def _build_result_config(cfg, model_path: str, xguard_model_path: str, sample_size: int) -> Dict[str, Any]:
+    return {
+        "project_root": cfg.project_root,
+        "data_root": cfg.data_root,
+        "model_path": model_path,
+        "xguard_model_path": xguard_model_path,
+        "device": cfg.device,
+        "dtype": str(cfg.dtype),
+        "max_length": cfg.max_length,
+        "safety_sample_size": sample_size,
+        "safety_seed": cfg.safety_seed,
+        "safety_generation_max_new_tokens": cfg.safety_generation_max_new_tokens,
+    }
+
+
+def _extract_prompt(row: Dict[str, Any]) -> str:
+    for key in ("prompt", "question", "instruction", "input", "text"):
+        value = row.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    for value in row.values():
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _sample_rows(rows: List[Dict[str, Any]], sample_size: int, seed: int) -> List[Dict[str, Any]]:
+    valid_rows = [row for row in rows if _extract_prompt(row)]
+    if not valid_rows:
+        raise ValueError("No rows with usable prompts found.")
+    if sample_size >= len(valid_rows):
+        return valid_rows
+    rng = random.Random(seed)
+    return rng.sample(valid_rows, sample_size)
+
+
+def _load_generation_model(model_path: str, device: str, dtype: torch.dtype):
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_path,
+        use_fast=True,
+        trust_remote_code=True,
+    )
+    tokenizer.padding_side = "left"
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        torch_dtype=dtype,
+        device_map=None,
+        trust_remote_code=True,
+    )
+    model.to(device)
+    model.eval()
+    return model, tokenizer
+
+
+def _generate_responses(
+    model_path: str,
+    prompts: List[str],
+    device: str,
+    dtype: torch.dtype,
+    max_length: int,
+    max_new_tokens: int,
+    desc: str,
+) -> List[str]:
+    model, tokenizer = _load_generation_model(model_path, device, dtype)
+    responses: List[str] = []
+    try:
+        for prompt in tqdm(prompts, desc=desc):
+            messages = [{"role": "user", "content": prompt}]
+            if hasattr(tokenizer, "apply_chat_template"):
+                prompt_text = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                encoded = tokenizer(
+                    prompt_text,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=max_length,
+                    add_special_tokens=False,
+                )
+            else:
+                encoded = tokenizer(
+                    prompt,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=max_length,
+                )
+            encoded = {key: value.to(device) for key, value in encoded.items()}
+            with torch.no_grad():
+                output = model.generate(
+                    **encoded,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=False,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                )
+            prompt_len = encoded["input_ids"].shape[-1]
+            response = tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True).strip()
+            responses.append(response)
+    finally:
+        del model
+        if device.startswith("cuda") and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    return responses
+
+
+def _load_xguard(xguard_model_path: str, device: str):
+    tokenizer = AutoTokenizer.from_pretrained(
+        xguard_model_path,
+        use_fast=True,
+        trust_remote_code=True,
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained(
+        xguard_model_path,
+        torch_dtype="auto",
+        device_map=None,
+        trust_remote_code=True,
+    )
+    model.to(device)
+    model.eval()
+    return model, tokenizer
+
+
+def _xguard_response_safety(
+    guard_model,
+    guard_tokenizer,
+    prompt: str,
+    response: str,
+    max_new_tokens: int = 1,
+) -> Dict[str, Any]:
+    messages = [
+        {"role": "user", "content": prompt},
+        {"role": "assistant", "content": response},
+    ]
+    rendered_query = guard_tokenizer.apply_chat_template(
+        messages,
+        policy=None,
+        reason_first=False,
+        tokenize=False,
+    )
+    model_inputs = guard_tokenizer([rendered_query], return_tensors="pt").to(guard_model.device)
+
+    with torch.no_grad():
+        outputs = guard_model.generate(
+            **model_inputs,
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
+            output_scores=True,
+            return_dict_in_generate=True,
+        )
+
+    input_length = model_inputs["input_ids"].shape[1]
+    output_ids = outputs["sequences"][0][input_length:]
+    response_text = guard_tokenizer.decode(output_ids, skip_special_tokens=True)
+
+    generated_tokens = outputs.sequences[:, input_length:]
+    scores = torch.stack(outputs.scores, dim=1).softmax(-1)
+    scores_topk_value, scores_topk_index = scores.topk(k=10, dim=-1)
+
+    generated_tokens_with_probs: List[List[Dict[str, Dict[str, float | str]]]] = []
+    for generated_token, topk_values, topk_indices in zip(generated_tokens, scores_topk_value, scores_topk_index):
+        token_prob_list: List[Dict[str, Dict[str, float | str]]] = []
+        for token_id, values, indices in zip(generated_token, topk_values, topk_indices):
+            token_id = int(token_id.cpu())
+            if token_id == guard_tokenizer.pad_token_id:
+                continue
+            token_scores: Dict[str, Dict[str, float | str]] = {}
+            for rank, (value, index) in enumerate(zip(values, indices)):
+                prob = float(value.cpu().numpy())
+                if rank == 0 or prob > 1e-4:
+                    text = guard_tokenizer.decode(index.cpu().numpy())
+                    token_scores[text] = {
+                        "id": str(int(index.cpu().numpy())),
+                        "prob": round(prob, 4),
+                    }
+            token_prob_list.append(token_scores)
+        generated_tokens_with_probs.append(token_prob_list)
+
+    first_step_scores = generated_tokens_with_probs[0][0] if generated_tokens_with_probs and generated_tokens_with_probs[0] else {}
+    token_score = {key: value["prob"] for key, value in first_step_scores.items()}
+    id2risk = guard_tokenizer.init_kwargs.get("id2risk", {})
+    risk_score = {
+        id2risk[key]: value["prob"]
+        for key, value in first_step_scores.items()
+        if key in id2risk
+    }
+    return {
+        "response": response_text,
+        "token_score": token_score,
+        "risk_score": risk_score,
+    }
+
+
+def _safe_safe_score(risk_score: Dict[str, float]) -> float:
+    return float(risk_score.get("Safe-Safe", 0.0))
+
+
+def main() -> None:
+    args = _parse_args()
+    cfg = load_config()
+    sample_size = args.sample_size or cfg.safety_sample_size
+    output_dir = Path(args.output_dir) if args.output_dir else Path(cfg.data_root) / DEFAULT_OUTPUT_DIRNAME
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    torch.manual_seed(cfg.safety_seed)
+    random.seed(cfg.safety_seed)
+
+    model_path = args.model_path
+    xguard_model_path = str(Path(cfg.project_root) / XGUARD_RELATIVE_PATH)
+    model_outputs_dirname = model_path.replace("/", "__")
+    model_output_dir = output_dir / model_outputs_dirname
+    model_output_dir.mkdir(parents=True, exist_ok=True)
+    result_config = _build_result_config(
+        cfg=cfg,
+        model_path=model_path,
+        xguard_model_path=xguard_model_path,
+        sample_size=sample_size,
+    )
+
+    guard_model, guard_tokenizer = _load_xguard(xguard_model_path=xguard_model_path, device=cfg.device)
+    all_safe_safe_scores: List[float] = []
+
+    try:
+        for dataset_name, dataset_path in tqdm(cfg.safety_dataset_paths.items(), desc="safety2:datasets"):
+            rows = _load_json_dataset(dataset_path)
+            sampled_rows = _sample_rows(rows, sample_size, cfg.safety_seed)
+            prompts = [_extract_prompt(row) for row in sampled_rows]
+            responses = _generate_responses(
+                model_path=model_path,
+                prompts=prompts,
+                device=cfg.device,
+                dtype=cfg.dtype,
+                max_length=cfg.max_length,
+                max_new_tokens=cfg.safety_generation_max_new_tokens,
+                desc=f"{dataset_name}:generate",
+            )
+
+            results: List[Dict[str, Any]] = []
+            for row, prompt, response in tqdm(
+                zip(sampled_rows, prompts, responses),
+                total=len(sampled_rows),
+                desc=f"{dataset_name}:xguard",
+            ):
+                score = _xguard_response_safety(
+                    guard_model=guard_model,
+                    guard_tokenizer=guard_tokenizer,
+                    prompt=prompt,
+                    response=response,
+                    max_new_tokens=1,
+                )
+                results.append(
+                    {
+                        "prompt": prompt,
+                        "meta": row,
+                        "model_output": response,
+                        "xguard_risk_score": score["risk_score"],
+                    }
+                )
+
+            safe_safe_scores = [_safe_safe_score(item["xguard_risk_score"]) for item in results]
+            average_safe_safe_score = (
+                sum(safe_safe_scores) / len(safe_safe_scores) if safe_safe_scores else 0.0
+            )
+            all_safe_safe_scores.extend(safe_safe_scores)
+
+            payload = {
+                "config": result_config,
+                "model_path": model_path,
+                "xguard_model_path": xguard_model_path,
+                "dataset_name": dataset_name,
+                "dataset_path": dataset_path,
+                "sample_count": len(results),
+                "average_safe_safe_score": average_safe_safe_score,
+                "results": results,
+            }
+            output_path = model_output_dir / f"{dataset_name}.json"
+            with output_path.open("w", encoding="utf-8") as handle:
+                json.dump(payload, handle, ensure_ascii=False, indent=2)
+            print(f"Saved XGuard safety results to: {output_path}")
+            print(f"[{dataset_name}] average Safe-Safe score: {average_safe_safe_score:.6f}")
+    finally:
+        del guard_model
+        if cfg.device.startswith("cuda") and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    overall_average_safe_safe_score = (
+        sum(all_safe_safe_scores) / len(all_safe_safe_scores) if all_safe_safe_scores else 0.0
+    )
+    print(f"[overall] average Safe-Safe score: {overall_average_safe_safe_score:.6f}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Tuple
 
 import torch
 import torch.nn as nn
@@ -35,6 +35,12 @@ def _is_supported_linear(module: nn.Module) -> bool:
     return isinstance(base_layer, nn.Linear)
 
 
+def canonical_module_name(name: str) -> str:
+    if name.endswith(".base_layer"):
+        return name[: -len(".base_layer")]
+    return name
+
+
 def _matches_target_suffix(name: str, target_names: Iterable[str]) -> bool:
     parts = name.split(".")
     if not parts:
@@ -53,12 +59,35 @@ def find_target_modules(model: nn.Module, target_names: Iterable[str]) -> Dict[s
     suffixes = tuple(target_names)
     modules: Dict[str, nn.Module] = {}
     for name, module in model.named_modules():
+        canonical_name = canonical_module_name(name)
+        if canonical_name in modules:
+            continue
         if _is_supported_linear(module) and _matches_target_suffix(name, suffixes):
-            modules[name] = module
+            modules[canonical_name] = module
     if not modules:
         raise ValueError(
             "No target linear modules found for activation inspection. "
             "Check target_linear_names or whether the model is wrapped by PEFT/LoRA."
+        )
+    return modules
+
+
+def find_named_modules(model: nn.Module, module_names: Iterable[str]) -> Dict[str, nn.Module]:
+    targets = tuple(module_names)
+    modules: Dict[str, nn.Module] = {}
+    for name, module in model.named_modules():
+        canonical_name = canonical_module_name(name)
+        if not _is_supported_linear(module):
+            continue
+        for target in targets:
+            if target in modules:
+                continue
+            if canonical_name == target or canonical_name.endswith(f".{target}"):
+                modules[target] = module
+    missing = sorted(set(targets) - set(modules))
+    if missing:
+        raise ValueError(
+            "Missing requested activation modules: " + ", ".join(missing)
         )
     return modules
 
@@ -103,7 +132,7 @@ class ActivationCollector:
 
             abs_vector = vector.abs()
             k = min(self.top_k, abs_vector.numel())
-            top_values, top_indices = torch.topk(abs_vector, k=k)
+            _top_values, top_indices = torch.topk(abs_vector, k=k)
             max_idx = int(top_indices[0].item())
             self._summaries[layer_name] = ActivationSummary(
                 layer_name=layer_name,
@@ -180,5 +209,69 @@ class AverageActivationCollector:
                 self._counts[layer_name] = 0
             self._sum_vectors[layer_name] += vector
             self._counts[layer_name] += 1
+
+        return hook
+
+
+class SampleActivationCollector:
+    def __init__(
+        self,
+        model: nn.Module,
+        module_names: Iterable[str],
+        token_aggregation: str = "mean",
+    ) -> None:
+        self.model = model
+        self.module_names = tuple(module_names)
+        self.token_aggregation = token_aggregation
+        self._handles: List[torch.utils.hooks.RemovableHandle] = []
+        self._sample_vectors: Dict[str, torch.Tensor] = {}
+        self._token_span: Tuple[int, int] = (0, 0)
+
+    def register(self) -> None:
+        modules = find_named_modules(self.model, self.module_names)
+        for name, module in modules.items():
+            self._handles.append(module.register_forward_hook(self._make_hook(name)))
+
+    def set_token_span(self, start: int, end: int) -> None:
+        self._token_span = (max(0, int(start)), max(0, int(end)))
+
+    def clear(self) -> None:
+        self._sample_vectors.clear()
+
+    def remove(self) -> None:
+        for handle in self._handles:
+            handle.remove()
+        self._handles.clear()
+
+    def sample_vectors(self) -> Dict[str, torch.Tensor]:
+        return {name: vector.clone() for name, vector in self._sample_vectors.items()}
+
+    def _aggregate_hidden(self, hidden: torch.Tensor) -> torch.Tensor:
+        if hidden.ndim == 3:
+            seq = hidden[0]
+        elif hidden.ndim == 2:
+            seq = hidden
+        else:
+            return hidden.reshape(-1)
+
+        if seq.ndim == 1:
+            return seq
+
+        start, end = self._token_span
+        token_count = seq.shape[0]
+        start = min(start, max(token_count - 1, 0))
+        end = min(max(end, start + 1), token_count)
+        tokens = seq[start:end]
+
+        if self.token_aggregation == "first":
+            return tokens[0]
+        if self.token_aggregation == "last":
+            return tokens[-1]
+        return tokens.mean(dim=0)
+
+    def _make_hook(self, layer_name: str):
+        def hook(_module: nn.Module, _inputs, output: torch.Tensor) -> None:
+            vector = self._aggregate_hidden(output.detach().float())
+            self._sample_vectors[layer_name] = vector.cpu()
 
         return hook

@@ -13,6 +13,22 @@ DATA_ROOT = PROJECT_ROOT / "data"
 DATASETS_ROOT = PROJECT_ROOT / "datasets"
 
 
+SAE_DEFAULT_MODULES = (
+    "model.layers.8.self_attn.o_proj",
+    "model.layers.8.mlp.down_proj",
+    "model.layers.12.self_attn.o_proj",
+    "model.layers.12.mlp.down_proj",
+    "model.layers.16.self_attn.o_proj",
+    "model.layers.16.mlp.down_proj",
+    "model.layers.20.self_attn.o_proj",
+    "model.layers.20.mlp.down_proj",
+    "model.layers.24.self_attn.o_proj",
+    "model.layers.24.mlp.down_proj",
+    "model.layers.28.self_attn.o_proj",
+    "model.layers.28.mlp.down_proj",
+)
+
+
 def _cuda_available() -> bool:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -92,7 +108,6 @@ class PruneConfig:
 @dataclass
 class ActivationConfig:
     model_name: str = "llama3.1-8B-Instruct-0.6"
-    # model_path: str = str(MODELS_ROOT / "pruned" / "llama3.1-8B-Instruct-wanda-0.6")
     model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
     lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
     use_lora_adapter: bool = False
@@ -137,6 +152,103 @@ class ActivationConfig:
     @property
     def path_compare_index_path(self) -> str:
         return str(Path(self.path_compare_dir) / self.path_compare_index_file)
+
+
+@dataclass
+class SAEConfig:
+    model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
+    lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
+    use_lora_adapter: bool = False
+    source_safety_result_dir: str = str(DATA_ROOT / "safety2" / "models__aligned__llama3.1-8B-Instruct-dpo")
+    data_dir: str = str(DATA_ROOT / "activation" / "sae")
+    example_manifest_file: str = "examples.jsonl"
+    activation_dataset_subdir: str = "activations"
+    training_output_subdir: str = "checkpoints"
+    max_samples_per_dataset: int = 0
+    max_length: int = 1024
+    token_aggregation: str = "last"
+    capture_module_names: tuple[str, ...] = SAE_DEFAULT_MODULES
+    device: str = "cuda" if CUDA_AVAILABLE else "cpu"
+    torch_dtype: torch.dtype = torch.float16 if CUDA_AVAILABLE else torch.float32
+    feature_multiplier: float = 4.0
+    l1_coefficient: float = 1e-3
+    learning_rate: float = 1e-3
+    weight_decay: float = 0.0
+    batch_size: int = 32
+    num_epochs: int = 20
+    val_fraction: float = 0.1
+    seed: int = 42
+
+    @property
+    def example_manifest_path(self) -> str:
+        return str(Path(self.data_dir) / self.example_manifest_file)
+
+    @property
+    def activation_dataset_dir(self) -> str:
+        return str(Path(self.data_dir) / self.activation_dataset_subdir)
+
+    @property
+    def training_output_dir(self) -> str:
+        return str(Path(self.data_dir) / self.training_output_subdir)
+
+
+@dataclass
+class SAECompareConfig:
+    baseline_model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
+    baseline_lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
+    baseline_use_lora_adapter: bool = True
+    baseline_safety_dir: str = str(DATA_ROOT / "safety2" / "models__aligned__llama3.1-8B-Instruct-dpo")
+    compressed_model_path: str = str(MODELS_ROOT / "pruned" / "llama3.1-8B-Instruct-dpo-wanda-0.6")
+    compressed_lora_adapter_path: str = ""
+    compressed_use_lora_adapter: bool = False
+    compressed_safety_dir: str = str(DATA_ROOT / "safety2" / "models__pruned__llama3.1-8B-Instruct-dpo-wanda-0.6")
+    sae_checkpoint_dir: str = str(DATA_ROOT / "activation" / "sae" / "checkpoints")
+    output_dir: str = str(DATA_ROOT / "activation" / "sae_compare")
+    aggregation_methods: tuple[str, ...] = (
+        "weighted_sum",
+        "standardized_weighted_sum",
+        "topk_mean",
+    )
+    top_k: int = 5
+    max_samples: int = 0
+    max_length: int = 1024
+    token_aggregation: str = "mean"
+    viz_output_dir: str = str(DATA_ROOT / "activation" / "sae_vis")
+    viz_compare_dirs: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            str(DATA_ROOT / "activation" / f"sae_compare_prune{int(ratio * 10)}")
+            for ratio in (0.2, 0.3, 0.4, 0.5, 0.6, 0.7)
+        )
+    )
+    viz_default_method: str = "weighted_sum"
+    viz_top_modules: int = 6
+    device: str = "cuda" if CUDA_AVAILABLE else "cpu"
+    torch_dtype: torch.dtype = torch.float16 if CUDA_AVAILABLE else torch.float32
+
+
+@dataclass
+class BatchPipelineConfig:
+    prune_ratios: tuple[float, ...] = (0.2, 0.3, 0.4, 0.5, 0.6, 0.7)
+    python_bin: str = "python"
+    baseline_model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
+    baseline_lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
+    safety_output_root: str = str(DATA_ROOT / "safety2")
+    sae_compare_output_root: str = str(DATA_ROOT / "activation")
+    sae_compare_output_prefix: str = "sae_compare_prune"
+    sae_vis_output_root: str = str(DATA_ROOT / "activation")
+    sae_vis_output_prefix: str = "sae_vis_prune"
+
+
+@dataclass
+class UtilityEvalConfig:
+    baseline_model_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
+    pruned_model_root: str = str(MODELS_ROOT / "pruned")
+    pruned_model_prefix: str = "llama3.1-8B-Instruct-dpo-wanda"
+    output_root: str = str(DATA_ROOT / "utility")
+    tasks: tuple[str, ...] = ("mmlu", "gsm8k")
+    device: str = "cuda:0" if CUDA_AVAILABLE else "cpu"
+    batch_size: int = 8
+    apply_chat_template: bool = True
 
 
 @dataclass
@@ -234,6 +346,10 @@ class AppConfig:
 
     prune: PruneConfig = field(default_factory=PruneConfig)
     activation: ActivationConfig = field(default_factory=ActivationConfig)
+    sae: SAEConfig = field(default_factory=SAEConfig)
+    sae_compare: SAECompareConfig = field(default_factory=SAECompareConfig)
+    batch: BatchPipelineConfig = field(default_factory=BatchPipelineConfig)
+    utility_eval: UtilityEvalConfig = field(default_factory=UtilityEvalConfig)
     align: AlignmentConfig = field(default_factory=AlignmentConfig)
 
 
@@ -244,6 +360,7 @@ def load_config() -> AppConfig:
 def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
     prune = cfg.prune
     activation = cfg.activation
+    sae = cfg.sae
     align = cfg.align
     return {
         "project_root": cfg.project_root,
@@ -289,6 +406,77 @@ def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
             "save_full_vector": activation.save_full_vector,
             "device": activation.device,
             "torch_dtype": str(activation.torch_dtype),
+        },
+        "sae": {
+            "model_path": sae.model_path,
+            "lora_adapter_path": sae.lora_adapter_path,
+            "use_lora_adapter": sae.use_lora_adapter,
+            "source_safety_result_dir": sae.source_safety_result_dir,
+            "data_dir": sae.data_dir,
+            "example_manifest_file": sae.example_manifest_file,
+            "example_manifest_path": sae.example_manifest_path,
+            "activation_dataset_subdir": sae.activation_dataset_subdir,
+            "activation_dataset_dir": sae.activation_dataset_dir,
+            "training_output_subdir": sae.training_output_subdir,
+            "training_output_dir": sae.training_output_dir,
+            "max_samples_per_dataset": sae.max_samples_per_dataset,
+            "max_length": sae.max_length,
+            "token_aggregation": sae.token_aggregation,
+            "capture_module_names": list(sae.capture_module_names),
+            "device": sae.device,
+            "torch_dtype": str(sae.torch_dtype),
+            "feature_multiplier": sae.feature_multiplier,
+            "l1_coefficient": sae.l1_coefficient,
+            "learning_rate": sae.learning_rate,
+            "weight_decay": sae.weight_decay,
+            "batch_size": sae.batch_size,
+            "num_epochs": sae.num_epochs,
+            "val_fraction": sae.val_fraction,
+            "seed": sae.seed,
+        },
+        "sae_compare": {
+            "baseline_model_path": cfg.sae_compare.baseline_model_path,
+            "baseline_lora_adapter_path": cfg.sae_compare.baseline_lora_adapter_path,
+            "baseline_use_lora_adapter": cfg.sae_compare.baseline_use_lora_adapter,
+            "baseline_safety_dir": cfg.sae_compare.baseline_safety_dir,
+            "compressed_model_path": cfg.sae_compare.compressed_model_path,
+            "compressed_lora_adapter_path": cfg.sae_compare.compressed_lora_adapter_path,
+            "compressed_use_lora_adapter": cfg.sae_compare.compressed_use_lora_adapter,
+            "compressed_safety_dir": cfg.sae_compare.compressed_safety_dir,
+            "sae_checkpoint_dir": cfg.sae_compare.sae_checkpoint_dir,
+            "output_dir": cfg.sae_compare.output_dir,
+            "aggregation_methods": list(cfg.sae_compare.aggregation_methods),
+            "top_k": cfg.sae_compare.top_k,
+            "max_samples": cfg.sae_compare.max_samples,
+            "max_length": cfg.sae_compare.max_length,
+            "token_aggregation": cfg.sae_compare.token_aggregation,
+            "viz_output_dir": cfg.sae_compare.viz_output_dir,
+            "viz_compare_dirs": list(cfg.sae_compare.viz_compare_dirs),
+            "viz_default_method": cfg.sae_compare.viz_default_method,
+            "viz_top_modules": cfg.sae_compare.viz_top_modules,
+            "device": cfg.sae_compare.device,
+            "torch_dtype": str(cfg.sae_compare.torch_dtype),
+        },
+        "batch": {
+            "prune_ratios": list(cfg.batch.prune_ratios),
+            "python_bin": cfg.batch.python_bin,
+            "baseline_model_path": cfg.batch.baseline_model_path,
+            "baseline_lora_adapter_path": cfg.batch.baseline_lora_adapter_path,
+            "safety_output_root": cfg.batch.safety_output_root,
+            "sae_compare_output_root": cfg.batch.sae_compare_output_root,
+            "sae_compare_output_prefix": cfg.batch.sae_compare_output_prefix,
+            "sae_vis_output_root": cfg.batch.sae_vis_output_root,
+            "sae_vis_output_prefix": cfg.batch.sae_vis_output_prefix,
+        },
+        "utility_eval": {
+            "baseline_model_path": cfg.utility_eval.baseline_model_path,
+            "pruned_model_root": cfg.utility_eval.pruned_model_root,
+            "pruned_model_prefix": cfg.utility_eval.pruned_model_prefix,
+            "output_root": cfg.utility_eval.output_root,
+            "tasks": list(cfg.utility_eval.tasks),
+            "device": cfg.utility_eval.device,
+            "batch_size": cfg.utility_eval.batch_size,
+            "apply_chat_template": cfg.utility_eval.apply_chat_template,
         },
         "align": {
             "model_name": align.model_name,
