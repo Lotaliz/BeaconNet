@@ -1,0 +1,98 @@
+{
+  "method": "weighted_sum",
+  "compare_dirs": [
+    "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune06",
+    "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune2",
+    "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune3",
+    "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune4",
+    "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune5",
+    "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune6",
+    "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune7"
+  ],
+  "selected_modules": [
+    "model.layers.16.self_attn.o_proj",
+    "model.layers.12.self_attn.o_proj",
+    "model.layers.8.mlp.down_proj",
+    "model.layers.8.self_attn.o_proj",
+    "model.layers.12.mlp.down_proj",
+    "model.layers.28.mlp.down_proj"
+  ],
+  "run_metrics": [
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.6",
+      "compare_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune06",
+      "mean_probe_shift_abs": 6.715192258358002,
+      "mean_probe_shift_signed": -6.235274016857147,
+      "mean_baseline_safety_score": 0.9808595833333335,
+      "mean_compressed_safety_score": 0.90539125,
+      "overall_mean_safety_score_delta": -0.07546833157539368,
+      "mean_probe_score_delta_corr": 0.43543855597575504
+    },
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.2",
+      "compare_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune2",
+      "mean_probe_shift_abs": 1.2504323025544484,
+      "mean_probe_shift_signed": 0.15237235960861048,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.9783613445378151,
+      "overall_mean_safety_score_delta": -0.00027310947189107537,
+      "mean_probe_score_delta_corr": 0.15005316065313914
+    },
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.3",
+      "compare_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune3",
+      "mean_probe_shift_abs": 2.1540940453608832,
+      "mean_probe_shift_signed": -0.44732032033304375,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.961527731092437,
+      "overall_mean_safety_score_delta": -0.01710672490298748,
+      "mean_probe_score_delta_corr": 0.5233381539583206
+    },
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.4",
+      "compare_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune4",
+      "mean_probe_shift_abs": 3.154844750960668,
+      "mean_probe_shift_signed": -1.9289548092832167,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.9229882352941177,
+      "overall_mean_safety_score_delta": -0.05564621463418007,
+      "mean_probe_score_delta_corr": 0.6626188879211744
+    },
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.5",
+      "compare_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune5",
+      "mean_probe_shift_abs": 3.901743084192276,
+      "mean_probe_shift_signed": -2.6511796698905528,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.9081865546218488,
+      "overall_mean_safety_score_delta": -0.0704478994011879,
+      "mean_probe_score_delta_corr": 0.5824997996290525
+    },
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.6",
+      "compare_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune6",
+      "mean_probe_shift_abs": 6.955415636301041,
+      "mean_probe_shift_signed": -6.36429921289285,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.8839436974789916,
+      "overall_mean_safety_score_delta": -0.09469075500965118,
+      "mean_probe_score_delta_corr": 0.4348321668803692
+    },
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.7",
+      "compare_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune7",
+      "mean_probe_shift_abs": 16.999910692373913,
+      "mean_probe_shift_signed": -16.645941694577534,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.631783193277311,
+      "overall_mean_safety_score_delta": -0.34685128927230835,
+      "mean_probe_score_delta_corr": 0.37365900725126266
+    }
+  ],
+  "outputs": {
+    "probe_shift_vs_safety_delta": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis/probe_shift_vs_safety_delta.png",
+    "probe_shift_vs_safety_level": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis/probe_shift_vs_safety_level.png",
+    "module_probe_shift_heatmap": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis/module_probe_shift_heatmap.png",
+    "sample_scatter_plots": []
+  }
+}

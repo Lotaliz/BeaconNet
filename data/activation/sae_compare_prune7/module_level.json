@@ -1,0 +1,1286 @@
+{
+  "model.layers.12.mlp.down_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 1.0198700428009033,
+          "compressed_mean": 0.0,
+          "delta_mean": -1.0198700428009033
+        },
+        "negative_safety_score": {
+          "baseline_mean": 2.0701863765716553,
+          "compressed_mean": 19.525209426879883,
+          "delta_mean": 17.45502281188965
+        },
+        "safety_probe_score": {
+          "baseline_mean": -1.050316333770752,
+          "compressed_mean": -19.525209426879883,
+          "delta_mean": -18.474895477294922,
+          "delta_abs_mean": 18.635934829711914
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8454955816268921,
+          "baseline_probe_spearman": 0.4508545696735382,
+          "compressed_probe_pearson": 0.1747177094221115,
+          "compressed_probe_spearman": 0.19054265320301056,
+          "baseline_positive_pearson": 0.18541193008422852,
+          "compressed_positive_pearson": 0.0,
+          "baseline_negative_pearson": -0.8915061950683594,
+          "compressed_negative_pearson": -0.1747177094221115
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.39489707350730896,
+          "safety_score_delta_vs_probe_delta_spearman": 0.15013530850410461
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.7763437628746033,
+          "compressed_mean": -0.7763437032699585,
+          "delta_mean": -1.5526875257492065
+        },
+        "negative_safety_score": {
+          "baseline_mean": -5.40663480758667,
+          "compressed_mean": 5.40663480758667,
+          "delta_mean": 10.81326961517334
+        },
+        "safety_probe_score": {
+          "baseline_mean": 6.18297815322876,
+          "compressed_mean": -6.182978630065918,
+          "delta_mean": -12.36595630645752,
+          "delta_abs_mean": 12.522208213806152
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7793386578559875,
+          "baseline_probe_spearman": 0.45524853467941284,
+          "compressed_probe_pearson": 0.1455416977405548,
+          "compressed_probe_spearman": 0.17785215377807617,
+          "baseline_positive_pearson": 0.19426605105400085,
+          "compressed_positive_pearson": -1.1368683772161603e-09,
+          "baseline_negative_pearson": -0.8927285671234131,
+          "compressed_negative_pearson": -0.1455416977405548
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.37213873863220215,
+          "safety_score_delta_vs_probe_delta_spearman": 0.14033614099025726
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.1591876596212387,
+          "compressed_mean": 0.0,
+          "delta_mean": -0.1591876596212387
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.34300941228866577,
+          "compressed_mean": 2.572960138320923,
+          "delta_mean": 2.2299509048461914
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.18382173776626587,
+          "compressed_mean": -2.572960138320923,
+          "delta_mean": -2.3891384601593018,
+          "delta_abs_mean": 2.399181365966797
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7708845138549805,
+          "baseline_probe_spearman": 0.44030052423477173,
+          "compressed_probe_pearson": 0.1766715794801712,
+          "compressed_probe_spearman": 0.1634097695350647,
+          "baseline_positive_pearson": 0.1961669623851776,
+          "compressed_positive_pearson": 0.0,
+          "baseline_negative_pearson": -0.8313949704170227,
+          "compressed_negative_pearson": -0.1766715794801712
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.3724645972251892,
+          "safety_score_delta_vs_probe_delta_spearman": 0.1347813755273819
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -1.0198700428009033,
+    "negative_amplified_mean": 17.45502281188965,
+    "probe_deviation_mean": 18.635934829711914
+  },
+  "model.layers.12.self_attn.o_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 1.1408766508102417,
+          "compressed_mean": 0.0034686801955103874,
+          "delta_mean": -1.1374080181121826
+        },
+        "negative_safety_score": {
+          "baseline_mean": 2.1876189708709717,
+          "compressed_mean": 27.79275894165039,
+          "delta_mean": 25.60513687133789
+        },
+        "safety_probe_score": {
+          "baseline_mean": -1.0467422008514404,
+          "compressed_mean": -27.789289474487305,
+          "delta_mean": -26.74254608154297,
+          "delta_abs_mean": 26.75544548034668
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8775986433029175,
+          "baseline_probe_spearman": 0.3914969265460968,
+          "compressed_probe_pearson": -0.09190786629915237,
+          "compressed_probe_spearman": -0.12998148798942566,
+          "baseline_positive_pearson": 0.26093143224716187,
+          "compressed_positive_pearson": -0.15371794998645782,
+          "baseline_negative_pearson": -0.9008040428161621,
+          "compressed_negative_pearson": 0.09103010594844818
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.32396602630615234,
+          "safety_score_delta_vs_probe_delta_spearman": 0.0036034754011780024
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.8790319561958313,
+          "compressed_mean": -0.8790318369865417,
+          "delta_mean": -1.758063793182373
+        },
+        "negative_safety_score": {
+          "baseline_mean": -5.423747539520264,
+          "compressed_mean": 5.423747539520264,
+          "delta_mean": 10.847495079040527
+        },
+        "safety_probe_score": {
+          "baseline_mean": 6.302779674530029,
+          "compressed_mean": -6.302779674530029,
+          "delta_mean": -12.605559349060059,
+          "delta_abs_mean": 12.657968521118164
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.793363094329834,
+          "baseline_probe_spearman": 0.3527916371822357,
+          "compressed_probe_pearson": -0.08311666548252106,
+          "compressed_probe_spearman": -0.14324170351028442,
+          "baseline_positive_pearson": 0.25927793979644775,
+          "compressed_positive_pearson": -0.17137879133224487,
+          "baseline_negative_pearson": -0.8905863761901855,
+          "compressed_negative_pearson": 0.08077164739370346
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.33218100666999817,
+          "safety_score_delta_vs_probe_delta_spearman": 0.053204670548439026
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.1799357831478119,
+          "compressed_mean": 0.0006937359576113522,
+          "delta_mean": -0.17924201488494873
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.3798823654651642,
+          "compressed_mean": 3.9293408393859863,
+          "delta_mean": 3.5494585037231445
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.19994662702083588,
+          "compressed_mean": -3.928647041320801,
+          "delta_mean": -3.728700876235962,
+          "delta_abs_mean": 3.728700876235962
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8276335000991821,
+          "baseline_probe_spearman": 0.38923943042755127,
+          "compressed_probe_pearson": -0.07951370626688004,
+          "compressed_probe_spearman": -0.017696909606456757,
+          "baseline_positive_pearson": 0.2767305076122284,
+          "compressed_positive_pearson": -0.15371794998645782,
+          "baseline_negative_pearson": -0.8559363484382629,
+          "compressed_negative_pearson": 0.07773482799530029
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.3346984088420868,
+          "safety_score_delta_vs_probe_delta_spearman": 0.0828443244099617
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -1.1374080181121826,
+    "negative_amplified_mean": 25.60513687133789,
+    "probe_deviation_mean": 26.75544548034668
+  },
+  "model.layers.16.mlp.down_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.6370137333869934,
+          "compressed_mean": 0.0014191021909937263,
+          "delta_mean": -0.6355946063995361
+        },
+        "negative_safety_score": {
+          "baseline_mean": 1.9690957069396973,
+          "compressed_mean": 12.167169570922852,
+          "delta_mean": 10.198074340820312
+        },
+        "safety_probe_score": {
+          "baseline_mean": -1.332081913948059,
+          "compressed_mean": -12.165750503540039,
+          "delta_mean": -10.833669662475586,
+          "delta_abs_mean": 11.124263763427734
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8458384871482849,
+          "baseline_probe_spearman": 0.3617860674858093,
+          "compressed_probe_pearson": 0.05271836370229721,
+          "compressed_probe_spearman": 0.1645563244819641,
+          "baseline_positive_pearson": 0.23515547811985016,
+          "compressed_positive_pearson": 0.04176013544201851,
+          "baseline_negative_pearson": -0.85142982006073,
+          "compressed_negative_pearson": -0.052365999668836594
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.41300079226493835,
+          "safety_score_delta_vs_probe_delta_spearman": 0.16643640398979187
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.7403087615966797,
+          "compressed_mean": -0.7403087019920349,
+          "delta_mean": -1.4806174039840698
+        },
+        "negative_safety_score": {
+          "baseline_mean": -4.490035057067871,
+          "compressed_mean": 4.490035057067871,
+          "delta_mean": 8.980071067810059
+        },
+        "safety_probe_score": {
+          "baseline_mean": 5.230343818664551,
+          "compressed_mean": -5.230344295501709,
+          "delta_mean": -10.460687637329102,
+          "delta_abs_mean": 10.820701599121094
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8173291087150574,
+          "baseline_probe_spearman": 0.429646760225296,
+          "compressed_probe_pearson": 0.09257661551237106,
+          "compressed_probe_spearman": 0.21011963486671448,
+          "baseline_positive_pearson": 0.22405818104743958,
+          "compressed_positive_pearson": 0.04176013171672821,
+          "baseline_negative_pearson": -0.8416681289672852,
+          "compressed_negative_pearson": -0.09142481535673141
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.4060564935207367,
+          "safety_score_delta_vs_probe_delta_spearman": 0.1535678654909134
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.1088382676243782,
+          "compressed_mean": 0.00028382043819874525,
+          "delta_mean": -0.10855443775653839
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.34972965717315674,
+          "compressed_mean": 1.6068580150604248,
+          "delta_mean": 1.2571285963058472
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.24089138209819794,
+          "compressed_mean": -1.6065741777420044,
+          "delta_mean": -1.3656829595565796,
+          "delta_abs_mean": 1.4050079584121704
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8116030097007751,
+          "baseline_probe_spearman": 0.3406566083431244,
+          "compressed_probe_pearson": 0.020596539601683617,
+          "compressed_probe_spearman": -0.011152257211506367,
+          "baseline_positive_pearson": 0.25480392575263977,
+          "compressed_positive_pearson": 0.04176013171672821,
+          "baseline_negative_pearson": -0.8215059638023376,
+          "compressed_negative_pearson": -0.020096002146601677
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.4057828187942505,
+          "safety_score_delta_vs_probe_delta_spearman": 0.12112946808338165
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -0.6355946063995361,
+    "negative_amplified_mean": 10.198074340820312,
+    "probe_deviation_mean": 11.124263763427734
+  },
+  "model.layers.16.self_attn.o_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 1.8547006845474243,
+          "compressed_mean": 0.0730740875005722,
+          "delta_mean": -1.7816264629364014
+        },
+        "negative_safety_score": {
+          "baseline_mean": 5.528324127197266,
+          "compressed_mean": 53.21723556518555,
+          "delta_mean": 47.68891143798828
+        },
+        "safety_probe_score": {
+          "baseline_mean": -3.673623561859131,
+          "compressed_mean": -53.1441650390625,
+          "delta_mean": -49.47053909301758,
+          "delta_abs_mean": 50.8125114440918
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.9119404554367065,
+          "baseline_probe_spearman": 0.3328300714492798,
+          "compressed_probe_pearson": 0.10306579619646072,
+          "compressed_probe_spearman": 0.08731662482023239,
+          "baseline_positive_pearson": 0.23769322037696838,
+          "compressed_positive_pearson": 0.05442771688103676,
+          "baseline_negative_pearson": -0.9306419491767883,
+          "compressed_negative_pearson": -0.10185617208480835
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.45310577750205994,
+          "safety_score_delta_vs_probe_delta_spearman": 0.2380358874797821
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.9823521375656128,
+          "compressed_mean": -0.982352077960968,
+          "delta_mean": -1.964704155921936
+        },
+        "negative_safety_score": {
+          "baseline_mean": -6.74644136428833,
+          "compressed_mean": 6.746440887451172,
+          "delta_mean": 13.49288272857666
+        },
+        "safety_probe_score": {
+          "baseline_mean": 7.728792667388916,
+          "compressed_mean": -7.728792667388916,
+          "delta_mean": -15.457585334777832,
+          "delta_abs_mean": 15.866035461425781
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8466817736625671,
+          "baseline_probe_spearman": 0.3660162389278412,
+          "compressed_probe_pearson": 0.09013418853282928,
+          "compressed_probe_spearman": 0.0741133764386177,
+          "baseline_positive_pearson": 0.23939426243305206,
+          "compressed_positive_pearson": 0.06115599349141121,
+          "baseline_negative_pearson": -0.9343733787536621,
+          "compressed_negative_pearson": -0.08312415331602097
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.44573500752449036,
+          "safety_score_delta_vs_probe_delta_spearman": 0.2312134951353073
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.2640584111213684,
+          "compressed_mean": 0.014614816755056381,
+          "delta_mean": -0.24944362044334412
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.8725079894065857,
+          "compressed_mean": 6.367456912994385,
+          "delta_mean": 5.494948863983154
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.6084495186805725,
+          "compressed_mean": -6.352842807769775,
+          "delta_mean": -5.744392395019531,
+          "delta_abs_mean": 5.896613597869873
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8460598587989807,
+          "baseline_probe_spearman": 0.3325096070766449,
+          "compressed_probe_pearson": 0.1433960497379303,
+          "compressed_probe_spearman": 0.13380572199821472,
+          "baseline_positive_pearson": 0.25358936190605164,
+          "compressed_positive_pearson": 0.05442772060632706,
+          "baseline_negative_pearson": -0.8698821663856506,
+          "compressed_negative_pearson": -0.14035427570343018
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.43305936455726624,
+          "safety_score_delta_vs_probe_delta_spearman": 0.23434695601463318
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -1.7816264629364014,
+    "negative_amplified_mean": 47.68891143798828,
+    "probe_deviation_mean": 50.8125114440918
+  },
+  "model.layers.20.mlp.down_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.6503265500068665,
+          "compressed_mean": 0.00031903147464618087,
+          "delta_mean": -0.6500075459480286
+        },
+        "negative_safety_score": {
+          "baseline_mean": 2.243378162384033,
+          "compressed_mean": 15.398331642150879,
+          "delta_mean": 13.154953956604004
+        },
+        "safety_probe_score": {
+          "baseline_mean": -1.5930513143539429,
+          "compressed_mean": -15.398014068603516,
+          "delta_mean": -13.804961204528809,
+          "delta_abs_mean": 14.082651138305664
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8493951559066772,
+          "baseline_probe_spearman": 0.2600555419921875,
+          "compressed_probe_pearson": -0.015125465579330921,
+          "compressed_probe_spearman": -0.0047714002430438995,
+          "baseline_positive_pearson": 0.1876533329486847,
+          "compressed_positive_pearson": 0.02466498501598835,
+          "baseline_negative_pearson": -0.882136344909668,
+          "compressed_negative_pearson": 0.015213705599308014
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.4546378254890442,
+          "safety_score_delta_vs_probe_delta_spearman": 0.22618572413921356
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.7206239104270935,
+          "compressed_mean": -0.7206237316131592,
+          "delta_mean": -1.441247582435608
+        },
+        "negative_safety_score": {
+          "baseline_mean": -5.2908244132995605,
+          "compressed_mean": 5.290823936462402,
+          "delta_mean": 10.581647872924805
+        },
+        "safety_probe_score": {
+          "baseline_mean": 6.011447906494141,
+          "compressed_mean": -6.011447906494141,
+          "delta_mean": -12.022895812988281,
+          "delta_abs_mean": 12.333857536315918
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7855403423309326,
+          "baseline_probe_spearman": 0.270873099565506,
+          "compressed_probe_pearson": -0.06293121725320816,
+          "compressed_probe_spearman": -0.010781940072774887,
+          "baseline_positive_pearson": 0.19031675159931183,
+          "compressed_positive_pearson": 0.024664973840117455,
+          "baseline_negative_pearson": -0.871538519859314,
+          "compressed_negative_pearson": 0.06331551820039749
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.41048121452331543,
+          "safety_score_delta_vs_probe_delta_spearman": 0.19927360117435455
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.10625659674406052,
+          "compressed_mean": 6.380629201885313e-05,
+          "delta_mean": -0.10619278997182846
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.3952525854110718,
+          "compressed_mean": 1.997819423675537,
+          "delta_mean": 1.6025668382644653
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.28899601101875305,
+          "compressed_mean": -1.9977556467056274,
+          "delta_mean": -1.7087595462799072,
+          "delta_abs_mean": 1.740267276763916
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.769478976726532,
+          "baseline_probe_spearman": 0.2520367503166199,
+          "compressed_probe_pearson": 0.042588960379362106,
+          "compressed_probe_spearman": -0.016009114682674408,
+          "baseline_positive_pearson": 0.19434495270252228,
+          "compressed_positive_pearson": 0.02466498874127865,
+          "baseline_negative_pearson": -0.8140392899513245,
+          "compressed_negative_pearson": -0.04249861463904381
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.4588046371936798,
+          "safety_score_delta_vs_probe_delta_spearman": 0.26241275668144226
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -0.6500075459480286,
+    "negative_amplified_mean": 13.154953956604004,
+    "probe_deviation_mean": 14.082651138305664
+  },
+  "model.layers.20.self_attn.o_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 1.0707758665084839,
+          "compressed_mean": 0.024150444194674492,
+          "delta_mean": -1.0466253757476807
+        },
+        "negative_safety_score": {
+          "baseline_mean": 3.1081433296203613,
+          "compressed_mean": 13.240522384643555,
+          "delta_mean": 10.132380485534668
+        },
+        "safety_probe_score": {
+          "baseline_mean": -2.037367582321167,
+          "compressed_mean": -13.2163724899292,
+          "delta_mean": -11.17900562286377,
+          "delta_abs_mean": 11.630365371704102
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7237667441368103,
+          "baseline_probe_spearman": 0.4440464377403259,
+          "compressed_probe_pearson": 0.12843923270702362,
+          "compressed_probe_spearman": 0.08485258370637894,
+          "baseline_positive_pearson": 0.23601961135864258,
+          "compressed_positive_pearson": 0.05900603160262108,
+          "baseline_negative_pearson": -0.753934919834137,
+          "compressed_negative_pearson": -0.12617678940296173
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.37112417817115784,
+          "safety_score_delta_vs_probe_delta_spearman": 0.1822318732738495
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.8614077568054199,
+          "compressed_mean": -0.8614075779914856,
+          "delta_mean": -1.7228152751922607
+        },
+        "negative_safety_score": {
+          "baseline_mean": -3.392367124557495,
+          "compressed_mean": 3.392367124557495,
+          "delta_mean": 6.784733772277832
+        },
+        "safety_probe_score": {
+          "baseline_mean": 4.253774642944336,
+          "compressed_mean": -4.253775119781494,
+          "delta_mean": -8.507549285888672,
+          "delta_abs_mean": 9.044739723205566
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.723058819770813,
+          "baseline_probe_spearman": 0.4889545738697052,
+          "compressed_probe_pearson": 0.16601023077964783,
+          "compressed_probe_spearman": 0.1387409269809723,
+          "baseline_positive_pearson": 0.2337004840373993,
+          "compressed_positive_pearson": 0.06427410989999771,
+          "baseline_negative_pearson": -0.7820084691047668,
+          "compressed_negative_pearson": -0.1612173467874527
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.3858771026134491,
+          "safety_score_delta_vs_probe_delta_spearman": 0.19589802622795105
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.1682063490152359,
+          "compressed_mean": 0.004830088000744581,
+          "delta_mean": -0.16337625682353973
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.5282358527183533,
+          "compressed_mean": 2.0085673332214355,
+          "delta_mean": 1.480331301689148
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.3600294888019562,
+          "compressed_mean": -2.003736972808838,
+          "delta_mean": -1.6437077522277832,
+          "delta_abs_mean": 1.675716757774353
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.593876838684082,
+          "baseline_probe_spearman": 0.42585813999176025,
+          "compressed_probe_pearson": 0.08741185814142227,
+          "compressed_probe_spearman": 0.01927075907588005,
+          "baseline_positive_pearson": 0.26317083835601807,
+          "compressed_positive_pearson": 0.05900602787733078,
+          "baseline_negative_pearson": -0.61485356092453,
+          "compressed_negative_pearson": -0.0842333436012268
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.3070470094680786,
+          "safety_score_delta_vs_probe_delta_spearman": 0.14638228714466095
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -1.0466253757476807,
+    "negative_amplified_mean": 10.132380485534668,
+    "probe_deviation_mean": 11.630365371704102
+  },
+  "model.layers.24.mlp.down_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.6612558960914612,
+          "compressed_mean": 0.0,
+          "delta_mean": -0.6612558960914612
+        },
+        "negative_safety_score": {
+          "baseline_mean": 2.074582576751709,
+          "compressed_mean": 5.704769134521484,
+          "delta_mean": 3.6301867961883545
+        },
+        "safety_probe_score": {
+          "baseline_mean": -1.4133268594741821,
+          "compressed_mean": -5.704769134521484,
+          "delta_mean": -4.291442394256592,
+          "delta_abs_mean": 4.6374030113220215
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.824351966381073,
+          "baseline_probe_spearman": 0.29143285751342773,
+          "compressed_probe_pearson": -0.0765959843993187,
+          "compressed_probe_spearman": -0.10907278209924698,
+          "baseline_positive_pearson": 0.20533989369869232,
+          "compressed_positive_pearson": 0.0,
+          "baseline_negative_pearson": -0.8509789705276489,
+          "compressed_negative_pearson": 0.0765959843993187
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.26372745633125305,
+          "safety_score_delta_vs_probe_delta_spearman": -0.05947870761156082
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.7293655872344971,
+          "compressed_mean": -0.7293655276298523,
+          "delta_mean": -1.4587311744689941
+        },
+        "negative_safety_score": {
+          "baseline_mean": -2.4991559982299805,
+          "compressed_mean": 2.499155282974243,
+          "delta_mean": 4.9983110427856445
+        },
+        "safety_probe_score": {
+          "baseline_mean": 3.2285215854644775,
+          "compressed_mean": -3.2285208702087402,
+          "delta_mean": -6.457042217254639,
+          "delta_abs_mean": 7.131491661071777
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8191344141960144,
+          "baseline_probe_spearman": 0.3215354084968567,
+          "compressed_probe_pearson": -0.07792159169912338,
+          "compressed_probe_spearman": -0.10810425877571106,
+          "baseline_positive_pearson": 0.21446873247623444,
+          "compressed_positive_pearson": 0.0,
+          "baseline_negative_pearson": -0.8532630205154419,
+          "compressed_negative_pearson": 0.07792159914970398
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.25659701228141785,
+          "safety_score_delta_vs_probe_delta_spearman": -0.08738783746957779
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.11120159924030304,
+          "compressed_mean": 0.0,
+          "delta_mean": -0.11120159924030304
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.37617266178131104,
+          "compressed_mean": 0.8609005212783813,
+          "delta_mean": 0.4847278296947479
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.2649710774421692,
+          "compressed_mean": -0.8609005212783813,
+          "delta_mean": -0.5959295034408569,
+          "delta_abs_mean": 0.6458718180656433
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7466698884963989,
+          "baseline_probe_spearman": 0.2947087287902832,
+          "compressed_probe_pearson": -0.05075778812170029,
+          "compressed_probe_spearman": -0.07397806644439697,
+          "baseline_positive_pearson": 0.2230411320924759,
+          "compressed_positive_pearson": 0.0,
+          "baseline_negative_pearson": -0.7671799063682556,
+          "compressed_negative_pearson": 0.05075778812170029
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.2365856170654297,
+          "safety_score_delta_vs_probe_delta_spearman": 0.002784503623843193
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -0.6612558960914612,
+    "negative_amplified_mean": 3.6301867961883545,
+    "probe_deviation_mean": 4.6374030113220215
+  },
+  "model.layers.24.self_attn.o_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.5901634693145752,
+          "compressed_mean": 0.03559361770749092,
+          "delta_mean": -0.5545698404312134
+        },
+        "negative_safety_score": {
+          "baseline_mean": 2.6519415378570557,
+          "compressed_mean": 12.078570365905762,
+          "delta_mean": 9.426628112792969
+        },
+        "safety_probe_score": {
+          "baseline_mean": -2.0617783069610596,
+          "compressed_mean": -12.042977333068848,
+          "delta_mean": -9.98119831085205,
+          "delta_abs_mean": 10.208250999450684
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8318131566047668,
+          "baseline_probe_spearman": 0.3080330491065979,
+          "compressed_probe_pearson": 0.00953845027834177,
+          "compressed_probe_spearman": 0.023899730294942856,
+          "baseline_positive_pearson": 0.18297818303108215,
+          "compressed_positive_pearson": -0.02641555294394493,
+          "baseline_negative_pearson": -0.8365818858146667,
+          "compressed_negative_pearson": -0.010132744908332825
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.2824420928955078,
+          "safety_score_delta_vs_probe_delta_spearman": 0.07479703426361084
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.6415408253669739,
+          "compressed_mean": -0.6415408253669739,
+          "delta_mean": -1.2830817699432373
+        },
+        "negative_safety_score": {
+          "baseline_mean": -3.3812015056610107,
+          "compressed_mean": 3.3812015056610107,
+          "delta_mean": 6.7624030113220215
+        },
+        "safety_probe_score": {
+          "baseline_mean": 4.022742748260498,
+          "compressed_mean": -4.022741794586182,
+          "delta_mean": -8.04548454284668,
+          "delta_abs_mean": 8.346203804016113
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7943706512451172,
+          "baseline_probe_spearman": 0.40875232219696045,
+          "compressed_probe_pearson": -0.00044832195271737874,
+          "compressed_probe_spearman": -0.0027346531860530376,
+          "baseline_positive_pearson": 0.1756005436182022,
+          "compressed_positive_pearson": -0.018597867339849472,
+          "baseline_negative_pearson": -0.8279062509536743,
+          "compressed_negative_pearson": -0.0009943782351911068
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.2611539661884308,
+          "safety_score_delta_vs_probe_delta_spearman": 0.05002136528491974
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.0983710065484047,
+          "compressed_mean": 0.007118724286556244,
+          "delta_mean": -0.09125229716300964
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.4593426585197449,
+          "compressed_mean": 1.880190134048462,
+          "delta_mean": 1.4208474159240723
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.36097168922424316,
+          "compressed_mean": -1.8730716705322266,
+          "delta_mean": -1.5120997428894043,
+          "delta_abs_mean": 1.5269017219543457
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7459039092063904,
+          "baseline_probe_spearman": 0.2820039987564087,
+          "compressed_probe_pearson": 0.06392960995435715,
+          "compressed_probe_spearman": 0.09919527173042297,
+          "baseline_positive_pearson": 0.2007458359003067,
+          "compressed_positive_pearson": -0.026415536180138588,
+          "baseline_negative_pearson": -0.7516157031059265,
+          "compressed_negative_pearson": -0.06448208540678024
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.29876017570495605,
+          "safety_score_delta_vs_probe_delta_spearman": 0.12380003184080124
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -0.5545698404312134,
+    "negative_amplified_mean": 9.426628112792969,
+    "probe_deviation_mean": 10.208250999450684
+  },
+  "model.layers.28.mlp.down_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.3345945477485657,
+          "compressed_mean": 0.06727349758148193,
+          "delta_mean": -0.26732102036476135
+        },
+        "negative_safety_score": {
+          "baseline_mean": 1.8672726154327393,
+          "compressed_mean": 16.480802536010742,
+          "delta_mean": 14.613530158996582
+        },
+        "safety_probe_score": {
+          "baseline_mean": -1.5326781272888184,
+          "compressed_mean": -16.413530349731445,
+          "delta_mean": -14.880850791931152,
+          "delta_abs_mean": 14.936904907226562
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8754389882087708,
+          "baseline_probe_spearman": 0.3229454457759857,
+          "compressed_probe_pearson": -0.014983189292252064,
+          "compressed_probe_spearman": -0.03363481163978577,
+          "baseline_positive_pearson": 0.14896945655345917,
+          "compressed_positive_pearson": 0.07253140211105347,
+          "baseline_negative_pearson": -0.8949928879737854,
+          "compressed_negative_pearson": 0.018368417397141457
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.42290550470352173,
+          "safety_score_delta_vs_probe_delta_spearman": 0.17923372983932495
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.4285990595817566,
+          "compressed_mean": -0.4285989999771118,
+          "delta_mean": -0.8571981191635132
+        },
+        "negative_safety_score": {
+          "baseline_mean": -5.008881092071533,
+          "compressed_mean": 5.00888204574585,
+          "delta_mean": 10.0177640914917
+        },
+        "safety_probe_score": {
+          "baseline_mean": 5.437480449676514,
+          "compressed_mean": -5.43748140335083,
+          "delta_mean": -10.874961853027344,
+          "delta_abs_mean": 10.982193946838379
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7601994872093201,
+          "baseline_probe_spearman": 0.3460831642150879,
+          "compressed_probe_pearson": -0.004861155059188604,
+          "compressed_probe_spearman": -0.013737359084188938,
+          "baseline_positive_pearson": 0.14224037528038025,
+          "compressed_positive_pearson": 0.07261530309915543,
+          "baseline_negative_pearson": -0.8785275220870972,
+          "compressed_negative_pearson": 0.015507015399634838
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.36731162667274475,
+          "safety_score_delta_vs_probe_delta_spearman": 0.15004272758960724
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.05982423573732376,
+          "compressed_mean": 0.013454698957502842,
+          "delta_mean": -0.046369537711143494
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.3319374918937683,
+          "compressed_mean": 2.290585517883301,
+          "delta_mean": 1.9586483240127563
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.27211323380470276,
+          "compressed_mean": -2.2771308422088623,
+          "delta_mean": -2.0050177574157715,
+          "delta_abs_mean": 2.0088157653808594
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7817382216453552,
+          "baseline_probe_spearman": 0.3065660297870636,
+          "compressed_probe_pearson": 0.05988883599638939,
+          "compressed_probe_spearman": 0.012049566023051739,
+          "baseline_positive_pearson": 0.16059282422065735,
+          "compressed_positive_pearson": 0.07253140956163406,
+          "baseline_negative_pearson": -0.8097859025001526,
+          "compressed_negative_pearson": -0.05505642294883728
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.4273480474948883,
+          "safety_score_delta_vs_probe_delta_spearman": 0.23318615555763245
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -0.26732102036476135,
+    "negative_amplified_mean": 14.613530158996582,
+    "probe_deviation_mean": 14.936904907226562
+  },
+  "model.layers.28.self_attn.o_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.7241200804710388,
+          "compressed_mean": 0.5902984738349915,
+          "delta_mean": -0.13382147252559662
+        },
+        "negative_safety_score": {
+          "baseline_mean": 1.2217682600021362,
+          "compressed_mean": 4.2661943435668945,
+          "delta_mean": 3.0444259643554688
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.4976482093334198,
+          "compressed_mean": -3.675895929336548,
+          "delta_mean": -3.1782474517822266,
+          "delta_abs_mean": 3.5063893795013428
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8130009174346924,
+          "baseline_probe_spearman": 0.31717702746391296,
+          "compressed_probe_pearson": -0.2283690869808197,
+          "compressed_probe_spearman": -0.17476855218410492,
+          "baseline_positive_pearson": 0.2024724781513214,
+          "compressed_positive_pearson": -0.19617974758148193,
+          "baseline_negative_pearson": -0.8445451855659485,
+          "compressed_negative_pearson": 0.19632141292095184
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.2697860896587372,
+          "safety_score_delta_vs_probe_delta_spearman": -0.06924227625131607
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.1949254870414734,
+          "compressed_mean": -0.1949254870414734,
+          "delta_mean": -0.3898509740829468
+        },
+        "negative_safety_score": {
+          "baseline_mean": -1.2190496921539307,
+          "compressed_mean": 1.2190495729446411,
+          "delta_mean": 2.4380993843078613
+        },
+        "safety_probe_score": {
+          "baseline_mean": 1.4139751195907593,
+          "compressed_mean": -1.4139748811721802,
+          "delta_mean": -2.8279502391815186,
+          "delta_abs_mean": 3.6569907665252686
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.786792516708374,
+          "baseline_probe_spearman": 0.2996011972427368,
+          "compressed_probe_pearson": -0.1592552214860916,
+          "compressed_probe_spearman": -0.06674975156784058,
+          "baseline_positive_pearson": 0.19791507720947266,
+          "compressed_positive_pearson": -0.17395439743995667,
+          "baseline_negative_pearson": -0.8184805512428284,
+          "compressed_negative_pearson": 0.12045874446630478
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.32977432012557983,
+          "safety_score_delta_vs_probe_delta_spearman": 0.03662583604454994
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.11964064836502075,
+          "compressed_mean": 0.11414500325918198,
+          "delta_mean": -0.005495647434145212
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.22351914644241333,
+          "compressed_mean": 0.8264723420143127,
+          "delta_mean": 0.602953314781189
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.10387849062681198,
+          "compressed_mean": -0.7123274207115173,
+          "delta_mean": -0.6084489822387695,
+          "delta_abs_mean": 0.6433553099632263
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7671704292297363,
+          "baseline_probe_spearman": 0.28706738352775574,
+          "compressed_probe_pearson": -0.2441294938325882,
+          "compressed_probe_spearman": -0.21176470816135406,
+          "baseline_positive_pearson": 0.2258671224117279,
+          "compressed_positive_pearson": -0.20229390263557434,
+          "baseline_negative_pearson": -0.7852924466133118,
+          "compressed_negative_pearson": 0.21431869268417358
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.19764463603496552,
+          "safety_score_delta_vs_probe_delta_spearman": -0.09685230255126953
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -0.13382147252559662,
+    "negative_amplified_mean": 3.0444259643554688,
+    "probe_deviation_mean": 3.5063893795013428
+  },
+  "model.layers.8.mlp.down_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 1.0000624656677246,
+          "compressed_mean": 0.10571137070655823,
+          "delta_mean": -0.8943509459495544
+        },
+        "negative_safety_score": {
+          "baseline_mean": 2.8286666870117188,
+          "compressed_mean": 22.25282096862793,
+          "delta_mean": 19.424152374267578
+        },
+        "safety_probe_score": {
+          "baseline_mean": -1.8286043405532837,
+          "compressed_mean": -22.14710807800293,
+          "delta_mean": -20.318504333496094,
+          "delta_abs_mean": 20.73079490661621
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8426046371459961,
+          "baseline_probe_spearman": 0.4470517039299011,
+          "compressed_probe_pearson": 0.17531289160251617,
+          "compressed_probe_spearman": 0.1595214307308197,
+          "baseline_positive_pearson": 0.1944037526845932,
+          "compressed_positive_pearson": 0.052195142954587936,
+          "baseline_negative_pearson": -0.882235586643219,
+          "compressed_negative_pearson": -0.17000319063663483
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.4035406708717346,
+          "safety_score_delta_vs_probe_delta_spearman": 0.16718415915966034
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.716046154499054,
+          "compressed_mean": -0.7160462737083435,
+          "delta_mean": -1.432092547416687
+        },
+        "negative_safety_score": {
+          "baseline_mean": -5.746767520904541,
+          "compressed_mean": 5.746767997741699,
+          "delta_mean": 11.493535995483398
+        },
+        "safety_probe_score": {
+          "baseline_mean": 6.4628143310546875,
+          "compressed_mean": -6.4628143310546875,
+          "delta_mean": -12.925628662109375,
+          "delta_abs_mean": 13.26637077331543
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7737310528755188,
+          "baseline_probe_spearman": 0.4859706461429596,
+          "compressed_probe_pearson": 0.15779320895671844,
+          "compressed_probe_spearman": 0.1997934728860855,
+          "baseline_positive_pearson": 0.19920942187309265,
+          "compressed_positive_pearson": 0.06039893254637718,
+          "baseline_negative_pearson": -0.8845100998878479,
+          "compressed_negative_pearson": -0.14143911004066467
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.3476400077342987,
+          "safety_score_delta_vs_probe_delta_spearman": 0.07917675375938416
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.15651340782642365,
+          "compressed_mean": 0.021142272278666496,
+          "delta_mean": -0.135371133685112
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.4611993134021759,
+          "compressed_mean": 2.872088670730591,
+          "delta_mean": 2.4108893871307373
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.30468592047691345,
+          "compressed_mean": -2.8509464263916016,
+          "delta_mean": -2.5462608337402344,
+          "delta_abs_mean": 2.5861001014709473
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7668584585189819,
+          "baseline_probe_spearman": 0.4339908957481384,
+          "compressed_probe_pearson": 0.2158481478691101,
+          "compressed_probe_spearman": 0.21026919782161713,
+          "baseline_positive_pearson": 0.2046881914138794,
+          "compressed_positive_pearson": 0.05219515785574913,
+          "baseline_negative_pearson": -0.8184675574302673,
+          "compressed_negative_pearson": -0.2082691639661789
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.38056957721710205,
+          "safety_score_delta_vs_probe_delta_spearman": 0.18735934793949127
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -0.8943509459495544,
+    "negative_amplified_mean": 19.424152374267578,
+    "probe_deviation_mean": 20.73079490661621
+  },
+  "model.layers.8.self_attn.o_proj": {
+    "feature_count": 20,
+    "aggregation_summary": {
+      "weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 1.1101762056350708,
+          "compressed_mean": 0.024015774950385094,
+          "delta_mean": -1.0861603021621704
+        },
+        "negative_safety_score": {
+          "baseline_mean": 2.4431586265563965,
+          "compressed_mean": 17.952436447143555,
+          "delta_mean": 15.509278297424316
+        },
+        "safety_probe_score": {
+          "baseline_mean": -1.3329824209213257,
+          "compressed_mean": -17.928421020507812,
+          "delta_mean": -16.595439910888672,
+          "delta_abs_mean": 16.938013076782227
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8684379458427429,
+          "baseline_probe_spearman": 0.26262640953063965,
+          "compressed_probe_pearson": 0.060980163514614105,
+          "compressed_probe_spearman": 0.05357499048113823,
+          "baseline_positive_pearson": 0.3209294080734253,
+          "compressed_positive_pearson": 0.04099613055586815,
+          "baseline_negative_pearson": -0.8903447985649109,
+          "compressed_negative_pearson": -0.06021491438150406
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.43077459931373596,
+          "safety_score_delta_vs_probe_delta_spearman": 0.12889190018177032
+        }
+      },
+      "standardized_weighted_sum": {
+        "positive_safety_score": {
+          "baseline_mean": 0.8183085918426514,
+          "compressed_mean": -0.8183086514472961,
+          "delta_mean": -1.6366173028945923
+        },
+        "negative_safety_score": {
+          "baseline_mean": -4.34510612487793,
+          "compressed_mean": 4.34510612487793,
+          "delta_mean": 8.69021224975586
+        },
+        "safety_probe_score": {
+          "baseline_mean": 5.163414478302002,
+          "compressed_mean": -5.163415431976318,
+          "delta_mean": -10.326828956604004,
+          "delta_abs_mean": 10.773653984069824
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.8706712126731873,
+          "baseline_probe_spearman": 0.3058609962463379,
+          "compressed_probe_pearson": 0.11420531570911407,
+          "compressed_probe_spearman": 0.06904999166727066,
+          "baseline_positive_pearson": 0.294789582490921,
+          "compressed_positive_pearson": 0.046296246349811554,
+          "baseline_negative_pearson": -0.9206734299659729,
+          "compressed_negative_pearson": -0.11338934302330017
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.4359280467033386,
+          "safety_score_delta_vs_probe_delta_spearman": 0.16161514818668365
+        }
+      },
+      "topk_mean": {
+        "positive_safety_score": {
+          "baseline_mean": 0.18697413802146912,
+          "compressed_mean": 0.004803155083209276,
+          "delta_mean": -0.18217098712921143
+        },
+        "negative_safety_score": {
+          "baseline_mean": 0.42065945267677307,
+          "compressed_mean": 2.805311918258667,
+          "delta_mean": 2.384652614593506
+        },
+        "safety_probe_score": {
+          "baseline_mean": -0.23368531465530396,
+          "compressed_mean": -2.800508975982666,
+          "delta_mean": -2.5668234825134277,
+          "delta_abs_mean": 2.582679271697998
+        },
+        "correlation_with_safety_score": {
+          "baseline_probe_pearson": 0.7611061334609985,
+          "baseline_probe_spearman": 0.2358780801296234,
+          "compressed_probe_pearson": -0.040620412677526474,
+          "compressed_probe_spearman": -0.04731519892811775,
+          "baseline_positive_pearson": 0.3983752131462097,
+          "compressed_positive_pearson": 0.040996138006448746,
+          "baseline_negative_pearson": -0.7783496379852295,
+          "compressed_negative_pearson": 0.0426337793469429
+        },
+        "delta_correlation": {
+          "safety_score_delta_vs_probe_delta_pearson": 0.3712531328201294,
+          "safety_score_delta_vs_probe_delta_spearman": 0.08030194789171219
+        }
+      }
+    },
+    "mean_baseline_safety_score": 0.9786344766616821,
+    "mean_compressed_safety_score": 0.6317831873893738,
+    "mean_safety_score_delta": -0.34685128927230835,
+    "positive_weakened_mean": -1.0861603021621704,
+    "negative_amplified_mean": 15.509278297424316,
+    "probe_deviation_mean": 16.938013076782227
+  }
+}

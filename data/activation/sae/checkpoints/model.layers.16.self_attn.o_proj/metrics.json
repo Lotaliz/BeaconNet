@@ -1,0 +1,94 @@
+{
+  "layer_name": "model.layers.16.self_attn.o_proj",
+  "input_dim": 4096,
+  "hidden_dim": 16384,
+  "train_size": 216,
+  "val_size": 24,
+  "best_val_loss": 0.24706079065799713,
+  "best_val_recon_loss": 0.24665884673595428,
+  "best_val_l1_loss": 0.4019492566585541,
+  "top_positive_features": [
+    {
+      "feature_index": 6918,
+      "correlation": 0.17454871535301208
+    },
+    {
+      "feature_index": 1005,
+      "correlation": 0.1740354299545288
+    },
+    {
+      "feature_index": 11947,
+      "correlation": 0.17204464972019196
+    },
+    {
+      "feature_index": 7893,
+      "correlation": 0.17150452733039856
+    },
+    {
+      "feature_index": 119,
+      "correlation": 0.17097555100917816
+    },
+    {
+      "feature_index": 1148,
+      "correlation": 0.17002882063388824
+    },
+    {
+      "feature_index": 13464,
+      "correlation": 0.16987697780132294
+    },
+    {
+      "feature_index": 13383,
+      "correlation": 0.16958096623420715
+    },
+    {
+      "feature_index": 3451,
+      "correlation": 0.16819390654563904
+    },
+    {
+      "feature_index": 8177,
+      "correlation": 0.168073371052742
+    }
+  ],
+  "top_negative_features": [
+    {
+      "feature_index": 14244,
+      "correlation": -0.7882527112960815
+    },
+    {
+      "feature_index": 10402,
+      "correlation": -0.7616786956787109
+    },
+    {
+      "feature_index": 1805,
+      "correlation": -0.7576202154159546
+    },
+    {
+      "feature_index": 15782,
+      "correlation": -0.7504204511642456
+    },
+    {
+      "feature_index": 15180,
+      "correlation": -0.7432451248168945
+    },
+    {
+      "feature_index": 793,
+      "correlation": -0.7353348731994629
+    },
+    {
+      "feature_index": 16316,
+      "correlation": -0.7338492274284363
+    },
+    {
+      "feature_index": 6513,
+      "correlation": -0.7338342666625977
+    },
+    {
+      "feature_index": 5563,
+      "correlation": -0.7320535778999329
+    },
+    {
+      "feature_index": 8895,
+      "correlation": -0.7225630283355713
+    }
+  ]
+}
