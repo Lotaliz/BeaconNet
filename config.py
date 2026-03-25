@@ -227,6 +227,38 @@ class SAECompareConfig:
 
 
 @dataclass
+class SAEPatchConfig:
+    model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
+    lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
+    use_lora_adapter: bool = True
+    sae_checkpoint_dir: str = str(DATA_ROOT / "activation" / "sae" / "checkpoints")
+    dataset_paths: Dict[str, str] = field(
+        default_factory=lambda: {
+            "advbench": str(DATASETS_ROOT / "advbench" / "data" / "advbench.json"),
+            "hex-phi": str(DATASETS_ROOT / "hex-phi" / "hex-phi.json"),
+        }
+    )
+    sample_size: int = 20
+    seed: int = 42
+    output_dir: str = str(DATA_ROOT / "activation" / "sae_patch")
+    patch_modes: tuple[str, ...] = (
+        "suppress_positive",
+        "enhance_positive",
+        "suppress_negative",
+        "enhance_negative",
+    )
+    feature_top_k: int = 5
+    patch_strength: float = 0.5
+    sweep_model_glob: str = "llama3.1-8B-Instruct-dpo-wanda-*"
+    sweep_output_prefix: str = "prune"
+    max_length: int = 1024
+    generation_max_new_tokens: int = 256
+    xguard_max_new_tokens: int = 1
+    device: str = "cuda" if CUDA_AVAILABLE else "cpu"
+    torch_dtype: torch.dtype = torch.float16 if CUDA_AVAILABLE else torch.float32
+
+
+@dataclass
 class BatchPipelineConfig:
     prune_ratios: tuple[float, ...] = (0.2, 0.3, 0.4, 0.5, 0.6, 0.7)
     python_bin: str = "python"
@@ -348,6 +380,7 @@ class AppConfig:
     activation: ActivationConfig = field(default_factory=ActivationConfig)
     sae: SAEConfig = field(default_factory=SAEConfig)
     sae_compare: SAECompareConfig = field(default_factory=SAECompareConfig)
+    sae_patch: SAEPatchConfig = field(default_factory=SAEPatchConfig)
     batch: BatchPipelineConfig = field(default_factory=BatchPipelineConfig)
     utility_eval: UtilityEvalConfig = field(default_factory=UtilityEvalConfig)
     align: AlignmentConfig = field(default_factory=AlignmentConfig)
@@ -456,6 +489,26 @@ def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
             "viz_top_modules": cfg.sae_compare.viz_top_modules,
             "device": cfg.sae_compare.device,
             "torch_dtype": str(cfg.sae_compare.torch_dtype),
+        },
+        "sae_patch": {
+            "model_path": cfg.sae_patch.model_path,
+            "lora_adapter_path": cfg.sae_patch.lora_adapter_path,
+            "use_lora_adapter": cfg.sae_patch.use_lora_adapter,
+            "sae_checkpoint_dir": cfg.sae_patch.sae_checkpoint_dir,
+            "dataset_paths": cfg.sae_patch.dataset_paths,
+            "sample_size": cfg.sae_patch.sample_size,
+            "seed": cfg.sae_patch.seed,
+            "output_dir": cfg.sae_patch.output_dir,
+            "patch_modes": list(cfg.sae_patch.patch_modes),
+            "feature_top_k": cfg.sae_patch.feature_top_k,
+            "patch_strength": cfg.sae_patch.patch_strength,
+            "sweep_model_glob": cfg.sae_patch.sweep_model_glob,
+            "sweep_output_prefix": cfg.sae_patch.sweep_output_prefix,
+            "max_length": cfg.sae_patch.max_length,
+            "generation_max_new_tokens": cfg.sae_patch.generation_max_new_tokens,
+            "xguard_max_new_tokens": cfg.sae_patch.xguard_max_new_tokens,
+            "device": cfg.sae_patch.device,
+            "torch_dtype": str(cfg.sae_patch.torch_dtype),
         },
         "batch": {
             "prune_ratios": list(cfg.batch.prune_ratios),
