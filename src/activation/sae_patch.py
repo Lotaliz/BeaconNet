@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 
 from config import load_config
-from src.activation.common import load_model, load_tokenizer
+from src.activation.common import load_model, load_tokenizer, sanitize_filename
 from src.activation.hooks import SAELatentPatcher
 from src.activation.train_sae import SparseAutoencoder
 from src.eval.safety2 import _extract_prompt, _load_json_dataset, _load_xguard, _safe_safe_score, _sample_rows, _xguard_response_safety
@@ -24,13 +24,27 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--sae-checkpoint-dir", default=None)
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--sample-size", type=int, default=None)
+    parser.add_argument("--layer", action="append", default=None, help="Patch only the specified SAE layer(s).")
     parser.add_argument("--patch-mode", action="append", default=None)
-    parser.add_argument("--feature-top-k", type=int, default=None)
     parser.add_argument("--patch-strength", type=float, default=None)
+    parser.add_argument("--safe-threshold", type=float, default=None)
+    parser.add_argument("--unsafe-threshold", type=float, default=None)
     return parser.parse_args()
 
 
-def _runtime_config(patch_cfg, model_path: str, adapter_path: str, sae_checkpoint_dir: str, output_dir: Path, sample_size: int, patch_modes: Tuple[str, ...], feature_top_k: int, patch_strength: float) -> Dict[str, Any]:
+def _runtime_config(
+    patch_cfg,
+    model_path: str,
+    adapter_path: str,
+    sae_checkpoint_dir: str,
+    output_dir: Path,
+    sample_size: int,
+    patch_modes: Tuple[str, ...],
+    patch_strength: float,
+    safe_threshold: float,
+    unsafe_threshold: float,
+    selected_layers: Tuple[str, ...],
+) -> Dict[str, Any]:
     return {
         "model_path": model_path,
         "adapter_path": adapter_path,
@@ -40,8 +54,10 @@ def _runtime_config(patch_cfg, model_path: str, adapter_path: str, sae_checkpoin
         "sample_size": sample_size,
         "seed": patch_cfg.seed,
         "patch_modes": list(patch_modes),
-        "feature_top_k": feature_top_k,
         "patch_strength": patch_strength,
+        "safe_threshold": safe_threshold,
+        "unsafe_threshold": unsafe_threshold,
+        "selected_layers": list(selected_layers),
         "max_length": patch_cfg.max_length,
         "generation_max_new_tokens": patch_cfg.generation_max_new_tokens,
         "xguard_max_new_tokens": patch_cfg.xguard_max_new_tokens,
@@ -50,10 +66,46 @@ def _runtime_config(patch_cfg, model_path: str, adapter_path: str, sae_checkpoin
     }
 
 
-def _load_sae_bundles(checkpoint_root: str, device: str, feature_top_k: int) -> Dict[str, Dict[str, Any]]:
+def _encode_dataset_latents(
+    sae: SparseAutoencoder,
+    mean: torch.Tensor,
+    std: torch.Tensor,
+    activations: torch.Tensor,
+    device: str,
+) -> torch.Tensor:
+    mean_cpu = mean.detach().float().cpu()
+    std_cpu = std.detach().float().cpu()
+    norm = (activations.float() - mean_cpu.unsqueeze(0)) / std_cpu.unsqueeze(0)
+    with torch.no_grad():
+        codes = sae.encode(norm.to(device)).cpu()
+    return codes
+
+
+def _load_sae_bundles(
+    checkpoint_root: str,
+    device: str,
+    safe_threshold: float,
+    unsafe_threshold: float,
+    selected_layers: Tuple[str, ...],
+) -> Dict[str, Dict[str, Any]]:
     root = Path(checkpoint_root)
     if not root.is_dir():
         raise FileNotFoundError(f"SAE checkpoint directory not found: {root}")
+    activation_root = root.parent / "activations"
+    targets_path = activation_root / "targets.pt"
+    if not targets_path.is_file():
+        raise FileNotFoundError(f"Activation targets not found: {targets_path}")
+    targets = torch.load(targets_path, map_location="cpu")
+    safe_scores = targets["safe_safe_score"].float()
+    safe_mask = safe_scores >= safe_threshold
+    unsafe_mask = safe_scores <= unsafe_threshold
+    safe_count = int(safe_mask.sum().item())
+    unsafe_count = int(unsafe_mask.sum().item())
+    if safe_count == 0 or unsafe_count == 0:
+        raise ValueError(
+            "Patch statistics require both safe and unsafe samples, "
+            f"got safe_count={safe_count}, unsafe_count={unsafe_count}."
+        )
 
     bundles: Dict[str, Dict[str, Any]] = {}
     for layer_dir in sorted(root.iterdir()):
@@ -63,21 +115,29 @@ def _load_sae_bundles(checkpoint_root: str, device: str, feature_top_k: int) -> 
         if not checkpoint_path.is_file():
             continue
         checkpoint = torch.load(checkpoint_path, map_location="cpu")
+        layer_name = str(checkpoint["layer_name"])
+        if selected_layers and layer_name not in selected_layers:
+            continue
+        activation_path = activation_root / f"{sanitize_filename(layer_name)}.pt"
+        if not activation_path.is_file():
+            raise FileNotFoundError(f"Activation tensor not found for {layer_name}: {activation_path}")
+        activation_payload = torch.load(activation_path, map_location="cpu")
+        activations = activation_payload["activations"].float()
         sae = SparseAutoencoder(input_dim=int(checkpoint["input_dim"]), hidden_dim=int(checkpoint["hidden_dim"])).to(device)
         sae.load_state_dict(checkpoint["state_dict"])
         sae.eval()
-
-        positive = list(checkpoint.get("top_positive_features", []))[:feature_top_k]
-        negative = list(checkpoint.get("top_negative_features", []))[:feature_top_k]
-        layer_name = str(checkpoint["layer_name"])
+        mean = checkpoint["mean"].float().squeeze(0).to(device)
+        std = checkpoint["std"].float().squeeze(0).clamp_min(1e-6).to(device)
+        codes = _encode_dataset_latents(sae=sae, mean=mean, std=std, activations=activations, device=device)
+        safe_mean = codes[safe_mask].mean(dim=0)
+        unsafe_mean = codes[unsafe_mask].mean(dim=0)
+        safe_delta = sae.decoder((safe_mean - unsafe_mean).to(device)).detach().cpu()
         bundles[layer_name] = {
-            "sae": sae,
-            "mean": checkpoint["mean"].float().squeeze(0).to(device),
-            "std": checkpoint["std"].float().squeeze(0).clamp_min(1e-6).to(device),
-            "positive_indices": [int(item["feature_index"]) for item in positive],
-            "positive_weights": [abs(float(item["correlation"])) for item in positive],
-            "negative_indices": [int(item["feature_index"]) for item in negative],
-            "negative_weights": [abs(float(item["correlation"])) for item in negative],
+            "mean": mean,
+            "std": std,
+            "safe_delta": safe_delta,
+            "safe_count": safe_count,
+            "unsafe_count": unsafe_count,
             "checkpoint_path": str(checkpoint_path),
         }
 
@@ -170,14 +230,22 @@ def main() -> None:
     output_dir = Path(args.output_dir or patch_cfg.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     sample_size = args.sample_size or patch_cfg.sample_size
+    selected_layers = tuple(args.layer or ())
     patch_modes = tuple(args.patch_mode or patch_cfg.patch_modes)
-    feature_top_k = args.feature_top_k or patch_cfg.feature_top_k
     patch_strength = args.patch_strength or patch_cfg.patch_strength
+    safe_threshold = patch_cfg.safe_threshold if args.safe_threshold is None else args.safe_threshold
+    unsafe_threshold = patch_cfg.unsafe_threshold if args.unsafe_threshold is None else args.unsafe_threshold
 
     torch.manual_seed(patch_cfg.seed)
     random.seed(patch_cfg.seed)
 
-    bundles = _load_sae_bundles(sae_checkpoint_dir, device=patch_cfg.device, feature_top_k=feature_top_k)
+    bundles = _load_sae_bundles(
+        sae_checkpoint_dir,
+        device=patch_cfg.device,
+        safe_threshold=safe_threshold,
+        unsafe_threshold=unsafe_threshold,
+        selected_layers=selected_layers,
+    )
     tokenizer = load_tokenizer(adapter_path or model_path)
     model = load_model(model_path=model_path, adapter_path=adapter_path, dtype=patch_cfg.torch_dtype, device=patch_cfg.device)
     xguard_model_path = str(Path(cfg.project_root) / XGUARD_RELATIVE_PATH)
@@ -208,82 +276,91 @@ def main() -> None:
             )
             baseline_mean = sum(_safe_safe_score(item["risk_score"]) for item in baseline_scores) / max(len(baseline_scores), 1)
 
-            for patch_mode in patch_modes:
-                mode_output_dir = output_dir / patch_mode
-                mode_output_dir.mkdir(parents=True, exist_ok=True)
-                patcher = SAELatentPatcher(
-                    model=model,
-                    module_bundles=bundles,
-                    mode=patch_mode,
-                    strength=patch_strength,
-                )
-                patcher.register()
-                try:
-                    patched_responses = _generate_responses(
+            for layer_name, bundle in bundles.items():
+                layer_slug = sanitize_filename(layer_name)
+                for patch_mode in patch_modes:
+                    mode_output_dir = output_dir / layer_slug / patch_mode
+                    mode_output_dir.mkdir(parents=True, exist_ok=True)
+                    patcher = SAELatentPatcher(
                         model=model,
-                        tokenizer=tokenizer,
-                        prompts=prompts,
-                        max_length=patch_cfg.max_length,
-                        max_new_tokens=patch_cfg.generation_max_new_tokens,
-                        desc=f"{dataset_name}:{patch_mode}:generate",
+                        module_bundles={layer_name: bundle},
+                        mode=patch_mode,
+                        strength=patch_strength,
                     )
-                finally:
-                    patcher.remove()
+                    patcher.register()
+                    try:
+                        patched_responses = _generate_responses(
+                            model=model,
+                            tokenizer=tokenizer,
+                            prompts=prompts,
+                            max_length=patch_cfg.max_length,
+                            max_new_tokens=patch_cfg.generation_max_new_tokens,
+                            desc=f"{dataset_name}:{layer_slug}:{patch_mode}:generate",
+                        )
+                    finally:
+                        patcher.remove()
 
-                patched_scores = _score_responses(
-                    guard_model=guard_model,
-                    guard_tokenizer=guard_tokenizer,
-                    prompts=prompts,
-                    responses=patched_responses,
-                    max_new_tokens=patch_cfg.xguard_max_new_tokens,
-                    desc=f"{dataset_name}:{patch_mode}:xguard",
-                )
-                records = _build_sample_records(
-                    rows=sampled_rows,
-                    prompts=prompts,
-                    baseline_responses=baseline_responses,
-                    baseline_scores=baseline_scores,
-                    patched_responses=patched_responses,
-                    patched_scores=patched_scores,
-                )
-                patched_mean = sum(item["patched_safe_safe_score"] for item in records) / max(len(records), 1)
-                payload = {
-                    "config": _runtime_config(
-                        patch_cfg=patch_cfg,
-                        model_path=model_path,
-                        adapter_path=adapter_path,
-                        sae_checkpoint_dir=sae_checkpoint_dir,
-                        output_dir=output_dir,
-                        sample_size=sample_size,
-                        patch_modes=patch_modes,
-                        feature_top_k=feature_top_k,
-                        patch_strength=patch_strength,
-                    ),
-                    "dataset_name": dataset_name,
-                    "dataset_path": dataset_path,
-                    "patch_mode": patch_mode,
-                    "sample_count": len(records),
-                    "baseline_mean_safe_safe_score": baseline_mean,
-                    "patched_mean_safe_safe_score": patched_mean,
-                    "mean_safe_safe_delta": patched_mean - baseline_mean,
-                    "patched_modules": sorted(bundles),
-                    "results": records,
-                }
-                output_path = mode_output_dir / f"{dataset_name}.json"
-                with output_path.open("w", encoding="utf-8") as handle:
-                    json.dump(payload, handle, ensure_ascii=False, indent=2)
-                print(f"Saved SAE patch results to: {output_path}")
-                summary_rows.append(
-                    {
+                    patched_scores = _score_responses(
+                        guard_model=guard_model,
+                        guard_tokenizer=guard_tokenizer,
+                        prompts=prompts,
+                        responses=patched_responses,
+                        max_new_tokens=patch_cfg.xguard_max_new_tokens,
+                        desc=f"{dataset_name}:{layer_slug}:{patch_mode}:xguard",
+                    )
+                    records = _build_sample_records(
+                        rows=sampled_rows,
+                        prompts=prompts,
+                        baseline_responses=baseline_responses,
+                        baseline_scores=baseline_scores,
+                        patched_responses=patched_responses,
+                        patched_scores=patched_scores,
+                    )
+                    patched_mean = sum(item["patched_safe_safe_score"] for item in records) / max(len(records), 1)
+                    payload = {
+                        "config": _runtime_config(
+                            patch_cfg=patch_cfg,
+                            model_path=model_path,
+                            adapter_path=adapter_path,
+                            sae_checkpoint_dir=sae_checkpoint_dir,
+                            output_dir=output_dir,
+                            sample_size=sample_size,
+                            patch_modes=patch_modes,
+                            patch_strength=patch_strength,
+                            safe_threshold=safe_threshold,
+                            unsafe_threshold=unsafe_threshold,
+                            selected_layers=selected_layers,
+                        ),
                         "dataset_name": dataset_name,
+                        "dataset_path": dataset_path,
+                        "layer_name": layer_name,
                         "patch_mode": patch_mode,
                         "sample_count": len(records),
                         "baseline_mean_safe_safe_score": baseline_mean,
                         "patched_mean_safe_safe_score": patched_mean,
                         "mean_safe_safe_delta": patched_mean - baseline_mean,
-                        "output_path": str(output_path),
+                        "safe_count": int(bundle["safe_count"]),
+                        "unsafe_count": int(bundle["unsafe_count"]),
+                        "results": records,
                     }
-                )
+                    output_path = mode_output_dir / f"{dataset_name}.json"
+                    with output_path.open("w", encoding="utf-8") as handle:
+                        json.dump(payload, handle, ensure_ascii=False, indent=2)
+                    print(f"Saved SAE patch results to: {output_path}")
+                    summary_rows.append(
+                        {
+                            "dataset_name": dataset_name,
+                            "layer_name": layer_name,
+                            "patch_mode": patch_mode,
+                            "sample_count": len(records),
+                            "baseline_mean_safe_safe_score": baseline_mean,
+                            "patched_mean_safe_safe_score": patched_mean,
+                            "mean_safe_safe_delta": patched_mean - baseline_mean,
+                            "safe_count": int(bundle["safe_count"]),
+                            "unsafe_count": int(bundle["unsafe_count"]),
+                            "output_path": str(output_path),
+                        }
+                    )
     finally:
         del model
         del guard_model
@@ -299,8 +376,10 @@ def main() -> None:
             output_dir=output_dir,
             sample_size=sample_size,
             patch_modes=patch_modes,
-            feature_top_k=feature_top_k,
             patch_strength=patch_strength,
+            safe_threshold=safe_threshold,
+            unsafe_threshold=unsafe_threshold,
+            selected_layers=selected_layers,
         ),
         "summaries": summary_rows,
     }

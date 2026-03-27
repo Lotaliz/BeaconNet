@@ -3,13 +3,17 @@ import json
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Tuple
 
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from config import config_to_dict, load_config
+
+
+ALPACA_RATIO = 0.8
+PKU_RATIO = 0.2
 
 
 def _parse_args() -> argparse.Namespace:
@@ -21,38 +25,39 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _load_prompts(path: str, limit: int) -> List[str]:
-    samples: List[str] = []
+def _load_rows(path: str) -> List[dict]:
     file_path = Path(path)
     if not file_path.is_file():
         raise FileNotFoundError(f"Calibration dataset not found: {path}")
 
+    rows: List[dict] = []
     with file_path.open("r", encoding="utf-8") as handle:
         if file_path.suffix == ".jsonl":
             for line in handle:
                 row = json.loads(line)
-                prompt = _extract_prompt(row)
-                if prompt:
-                    samples.append(prompt)
-                if len(samples) >= limit:
-                    break
+                if isinstance(row, dict):
+                    rows.append(row)
         else:
-            rows = json.load(handle)
-            for row in rows:
-                prompt = _extract_prompt(row)
-                if prompt:
-                    samples.append(prompt)
-                if len(samples) >= limit:
-                    break
+            payload = json.load(handle)
+            if isinstance(payload, list):
+                rows = [row for row in payload if isinstance(row, dict)]
 
-    if not samples:
-        raise ValueError(f"No usable prompts found in calibration dataset: {path}")
-    return samples
+    if not rows:
+        raise ValueError(f"No usable rows found in calibration dataset: {path}")
+    return rows
 
 
 def _extract_prompt(row: object) -> str:
     if not isinstance(row, dict):
         return ""
+
+    instruction = str(row.get("instruction", "")).strip()
+    model_input = str(row.get("input", "")).strip()
+    if instruction and model_input:
+        return f"Instruction: {instruction}\nInput: {model_input}"
+    if instruction:
+        return instruction
+
     for key in ("prompt", "question", "input", "text"):
         value = row.get(key)
         if isinstance(value, str) and value.strip():
@@ -61,6 +66,73 @@ def _extract_prompt(row: object) -> str:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return ""
+
+
+def _sample_prompts(rows: List[dict], sample_size: int, seed: int) -> List[str]:
+    prompts = [prompt for prompt in (_extract_prompt(row) for row in rows) if prompt]
+    if not prompts:
+        return []
+
+    rng = random.Random(seed)
+    rng.shuffle(prompts)
+    if sample_size >= len(prompts):
+        return prompts
+    return prompts[:sample_size]
+
+
+def _sample_tagged_prompts(rows: List[dict], sample_size: int, seed: int, source: str) -> List[Tuple[str, str]]:
+    prompts = _sample_prompts(rows, sample_size, seed)
+    return [(prompt, source) for prompt in prompts]
+
+
+def _load_mixed_calibration_prompts(cfg, limit: int, seed: int) -> Tuple[List[str], Dict[str, object]]:
+    if limit <= 0:
+        raise ValueError(f"calibration_samples must be positive, got {limit}")
+
+    alpaca_rows = _load_rows(cfg.alpaca_dataset_path)
+    pku_rows = _load_rows(cfg.align.train_dataset_path)
+
+    alpaca_target = int(round(limit * ALPACA_RATIO))
+    alpaca_target = min(max(alpaca_target, 0), limit)
+    pku_target = limit - alpaca_target
+
+    alpaca_prompts = _sample_prompts(alpaca_rows, alpaca_target, seed)
+    pku_prompts = _sample_prompts(pku_rows, pku_target, seed + 1)
+
+    deficit = limit - (len(alpaca_prompts) + len(pku_prompts))
+    if deficit > 0:
+        extra_alpaca = _sample_tagged_prompts(alpaca_rows, limit, seed + 2, "alpaca")
+        extra_pku = _sample_tagged_prompts(pku_rows, limit, seed + 3, "pku")
+        used = set(alpaca_prompts) | set(pku_prompts)
+        for prompt, source in extra_alpaca + extra_pku:
+            if prompt in used:
+                continue
+            if len(alpaca_prompts) + len(pku_prompts) >= limit:
+                break
+            used.add(prompt)
+            if source == "alpaca":
+                alpaca_prompts.append(prompt)
+            else:
+                pku_prompts.append(prompt)
+
+    prompts = alpaca_prompts + pku_prompts
+    if len(prompts) < limit:
+        raise ValueError(
+            f"Unable to build {limit} calibration prompts from Alpaca and PKU-SafeRLHF; "
+            f"got {len(prompts)} prompts."
+        )
+
+    rng = random.Random(seed)
+    rng.shuffle(prompts)
+    return prompts[:limit], {
+        "alpaca_dataset_path": cfg.alpaca_dataset_path,
+        "pku_dataset_path": cfg.align.train_dataset_path,
+        "alpaca_ratio": ALPACA_RATIO,
+        "pku_ratio": PKU_RATIO,
+        "alpaca_prompt_count": len(alpaca_prompts),
+        "pku_prompt_count": len(pku_prompts),
+        "total_prompt_count": min(len(prompts), limit),
+    }
 
 
 def _iter_target_linears(model: nn.Module, target_names: Iterable[str]) -> Dict[str, nn.Linear]:
@@ -253,7 +325,11 @@ def main() -> None:
     model.to(prune_cfg.device)
     model.eval()
 
-    prompts = _load_prompts(prune_cfg.calibration_data_path, prune_cfg.calibration_samples)
+    prompts, calibration_mix = _load_mixed_calibration_prompts(
+        cfg=cfg,
+        limit=prune_cfg.calibration_samples,
+        seed=prune_cfg.seed,
+    )
     activation_stats = _collect_activation_stats(
         model=model,
         tokenizer=tokenizer,
@@ -285,6 +361,7 @@ def main() -> None:
             'total_params': total_count,
             'global_sparsity': (zero_count / total_count) if total_count else 0.0,
             'calibration_prompt_count': len(prompts),
+            'calibration_mix': calibration_mix,
             'output_dir': str(output_dir),
         },
     }

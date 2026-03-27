@@ -1,0 +1,9 @@
+{
+  "source_dir": "/root/autodl-pvt/BeaconNet/data/safety2_mixed_prompt_last_s200_u200/__root__autodl-pvt__BeaconNet__models__aligned__llama3.1-8B-Instruct-dpo",
+  "output_path": "/root/autodl-pvt/BeaconNet/data/activation/mixed_prompt_last_s200_u200/examples.jsonl",
+  "sample_count": 400,
+  "dataset_counts": {
+    "pku_safe_rlhf_200": 200,
+    "wildjb_200": 200
+  }
+}

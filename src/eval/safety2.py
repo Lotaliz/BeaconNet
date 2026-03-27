@@ -1,4 +1,5 @@
 import argparse
+import csv
 import json
 import random
 from pathlib import Path
@@ -36,6 +37,16 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Optional output directory override. Defaults to data/safety2.",
     )
+    parser.add_argument(
+        "--dataset-path",
+        default=None,
+        help="Optional single dataset path override. Supports .json and .jsonl.",
+    )
+    parser.add_argument(
+        "--dataset-name",
+        default=None,
+        help="Optional dataset name override when --dataset-path is used.",
+    )
     return parser.parse_args()
 
 
@@ -43,11 +54,27 @@ def _load_json_dataset(path: str) -> List[Dict[str, Any]]:
     dataset_path = Path(path)
     if not dataset_path.is_file():
         raise FileNotFoundError(f"Dataset not found: {path}")
+    rows: List[Dict[str, Any]] = []
     with dataset_path.open("r", encoding="utf-8") as handle:
-        data = json.load(handle)
-    if not isinstance(data, list):
-        raise TypeError(f"Expected a JSON list in {path}")
-    rows = [row for row in data if isinstance(row, dict)]
+        if dataset_path.suffix == ".tsv":
+            reader = csv.DictReader(handle, delimiter="\t")
+            rows = [row for row in reader if isinstance(row, dict)]
+        elif dataset_path.suffix == ".jsonl":
+            for line_number, line in enumerate(handle, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"Invalid JSONL at {path}:{line_number}") from exc
+                if isinstance(item, dict):
+                    rows.append(item)
+        else:
+            data = json.load(handle)
+            if not isinstance(data, list):
+                raise TypeError(f"Expected a JSON list in {path}")
+            rows = [row for row in data if isinstance(row, dict)]
     if not rows:
         raise ValueError(f"No valid rows found in dataset: {path}")
     return rows
@@ -69,7 +96,13 @@ def _build_result_config(cfg, model_path: str, xguard_model_path: str, sample_si
 
 
 def _extract_prompt(row: Dict[str, Any]) -> str:
-    for key in ("prompt", "question", "instruction", "input", "text"):
+    instruction = str(row.get("instruction", "")).strip()
+    model_input = str(row.get("input", "")).strip()
+    if instruction and model_input:
+        return f"Instruction: {instruction}\nInput: {model_input}"
+    if instruction:
+        return instruction
+    for key in ("prompt", "question", "instruction", "input", "text", "adversarial"):
         value = row.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
@@ -256,6 +289,14 @@ def _safe_safe_score(risk_score: Dict[str, float]) -> float:
     return float(risk_score.get("Safe-Safe", 0.0))
 
 
+def _iter_datasets(args: argparse.Namespace, cfg) -> List[tuple[str, str]]:
+    if args.dataset_path:
+        dataset_path = str(Path(args.dataset_path))
+        dataset_name = args.dataset_name or Path(dataset_path).stem
+        return [(dataset_name, dataset_path)]
+    return list(cfg.safety_dataset_paths.items())
+
+
 def main() -> None:
     args = _parse_args()
     cfg = load_config()
@@ -282,7 +323,7 @@ def main() -> None:
     all_safe_safe_scores: List[float] = []
 
     try:
-        for dataset_name, dataset_path in tqdm(cfg.safety_dataset_paths.items(), desc="safety2:datasets"):
+        for dataset_name, dataset_path in tqdm(_iter_datasets(args, cfg), desc="safety2:datasets"):
             rows = _load_json_dataset(dataset_path)
             sampled_rows = _sample_rows(rows, sample_size, cfg.safety_seed)
             prompts = [_extract_prompt(row) for row in sampled_rows]

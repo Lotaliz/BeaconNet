@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 
 from config import load_config
-from src.activation.common import build_prompt_response_inputs, load_model, load_tokenizer, move_to_device, sanitize_filename
+from src.activation.common import build_prompt_inputs, load_model, load_tokenizer, move_to_device, sanitize_filename
 from src.activation.hooks import SampleActivationCollector
 from src.activation.train_sae import SparseAutoencoder
 
@@ -192,15 +192,14 @@ def _collect_model_activations(
     per_module: Dict[str, List[torch.Tensor]] = {name: [] for name in module_names}
     try:
         for sample in tqdm(samples, desc=desc):
-            encoded, token_span = build_prompt_response_inputs(
+            encoded, prompt_last_token_index = build_prompt_inputs(
                 tokenizer=tokenizer,
                 prompt=sample.prompt,
-                response=sample.response,
                 max_length=max_length,
             )
             batch = move_to_device(encoded, device)
             collector.clear()
-            collector.set_token_span(*token_span)
+            collector.set_token_span(prompt_last_token_index, prompt_last_token_index + 1)
             with torch.no_grad():
                 _ = model(**batch, use_cache=False)
             vectors = collector.sample_vectors()

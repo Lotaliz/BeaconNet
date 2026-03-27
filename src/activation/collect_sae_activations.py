@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 
 from config import config_to_dict, load_config
-from src.activation.common import build_prompt_response_inputs, load_model, load_tokenizer, move_to_device, sanitize_filename
+from src.activation.common import build_prompt_inputs, load_model, load_tokenizer, move_to_device, sanitize_filename
 from src.activation.hooks import SampleActivationCollector
 from src.activation.sae_data import load_examples_jsonl
 
@@ -62,15 +62,14 @@ def main() -> None:
 
     try:
         for example in tqdm(examples, desc="sae:collect"):
-            encoded, token_span = build_prompt_response_inputs(
+            encoded, prompt_last_token_index = build_prompt_inputs(
                 tokenizer=tokenizer,
                 prompt=example.prompt,
-                response=example.response,
                 max_length=sae_cfg.max_length,
             )
             batch = move_to_device(encoded, sae_cfg.device)
             collector.clear()
-            collector.set_token_span(*token_span)
+            collector.set_token_span(prompt_last_token_index, prompt_last_token_index + 1)
 
             with torch.no_grad():
                 _ = model(**batch, use_cache=False)
@@ -89,7 +88,8 @@ def main() -> None:
                     "safe_safe_score": example.safe_safe_score,
                     "unsafe_score": example.unsafe_score,
                     "source_model_path": example.source_model_path,
-                    "assistant_token_span": [int(token_span[0]), int(token_span[1])],
+                    "activation_target": "prompt_last_token",
+                    "prompt_last_token_index": int(prompt_last_token_index),
                 }
             )
             targets_safe_safe.append(float(example.safe_safe_score))
@@ -142,6 +142,7 @@ def main() -> None:
         "targets_path": str(targets_path),
         "layer_files": layer_files,
         "sample_count": len(metadata_rows),
+        "activation_target": "prompt_last_token",
     }
     with manifest_output_path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)

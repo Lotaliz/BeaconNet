@@ -1,0 +1,54 @@
+{
+  "method": "weighted_sum",
+  "compare_dirs": [
+    "data/activation/sae_compare_prune2",
+    "data/activation/sae_compare_prune4",
+    "data/activation/sae_compare_prune6"
+  ],
+  "selected_modules": [
+    "model.layers.12.self_attn.o_proj",
+    "model.layers.24.self_attn.o_proj",
+    "model.layers.16.mlp.down_proj",
+    "model.layers.28.self_attn.o_proj",
+    "model.layers.12.mlp.down_proj",
+    "model.layers.20.self_attn.o_proj"
+  ],
+  "run_metrics": [
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.2",
+      "compare_dir": "data/activation/sae_compare_prune2",
+      "mean_probe_shift_abs": 0.6326312397917112,
+      "mean_probe_shift_signed": -0.38841914509733516,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.9786470588235294,
+      "overall_mean_safety_score_delta": 1.2604754374478944e-05,
+      "mean_probe_score_delta_corr": -0.0563339328703781
+    },
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.4",
+      "compare_dir": "data/activation/sae_compare_prune4",
+      "mean_probe_shift_abs": 0.9663001969456673,
+      "mean_probe_shift_signed": -0.6729805891712507,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.9260907563025209,
+      "overall_mean_safety_score_delta": -0.05254369601607323,
+      "mean_probe_score_delta_corr": -0.040796999664356313
+    },
+    {
+      "label": "llama3.1-8B-Instruct-dpo-wanda-0.6",
+      "compare_dir": "data/activation/sae_compare_prune6",
+      "mean_probe_shift_abs": 2.1232792685429254,
+      "mean_probe_shift_signed": -1.8930781519350905,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.8071302521008402,
+      "overall_mean_safety_score_delta": -0.1715041697025299,
+      "mean_probe_score_delta_corr": -0.04950013345417877
+    }
+  ],
+  "outputs": {
+    "probe_shift_vs_safety_delta": "data/activation/sae_vis_merged/probe_shift_vs_safety_delta.png",
+    "probe_shift_vs_safety_level": "data/activation/sae_vis_merged/probe_shift_vs_safety_level.png",
+    "module_probe_shift_heatmap": "data/activation/sae_vis_merged/module_probe_shift_heatmap.png",
+    "sample_scatter_plots": []
+  }
+}

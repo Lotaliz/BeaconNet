@@ -202,7 +202,7 @@ class SAECompareConfig:
     compressed_lora_adapter_path: str = ""
     compressed_use_lora_adapter: bool = False
     compressed_safety_dir: str = str(DATA_ROOT / "safety2" / "models__pruned__llama3.1-8B-Instruct-dpo-wanda-0.6")
-    sae_checkpoint_dir: str = str(DATA_ROOT / "activation" / "sae" / "checkpoints")
+    sae_checkpoint_dir: str = str(DATA_ROOT / "activation" / "pku_prompt_last_200" / "checkpoints")
     output_dir: str = str(DATA_ROOT / "activation" / "sae_compare")
     aggregation_methods: tuple[str, ...] = (
         "weighted_sum",
@@ -212,12 +212,12 @@ class SAECompareConfig:
     top_k: int = 5
     max_samples: int = 0
     max_length: int = 1024
-    token_aggregation: str = "mean"
+    token_aggregation: str = "last"
     viz_output_dir: str = str(DATA_ROOT / "activation" / "sae_vis")
     viz_compare_dirs: tuple[str, ...] = field(
         default_factory=lambda: tuple(
             str(DATA_ROOT / "activation" / f"sae_compare_prune{int(ratio * 10)}")
-            for ratio in (0.2, 0.3, 0.4, 0.5, 0.6, 0.7)
+            for ratio in (0.2, 0.4, 0.6)
         )
     )
     viz_default_method: str = "weighted_sum"
@@ -230,8 +230,8 @@ class SAECompareConfig:
 class SAEPatchConfig:
     model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
     lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
-    use_lora_adapter: bool = True
-    sae_checkpoint_dir: str = str(DATA_ROOT / "activation" / "sae" / "checkpoints")
+    use_lora_adapter: bool = False
+    sae_checkpoint_dir: str = str(DATA_ROOT / "activation" / "mixed_prompt_last_s200_u200" / "checkpoints")
     dataset_paths: Dict[str, str] = field(
         default_factory=lambda: {
             "advbench": str(DATASETS_ROOT / "advbench" / "data" / "advbench.json"),
@@ -240,15 +240,14 @@ class SAEPatchConfig:
     )
     sample_size: int = 20
     seed: int = 42
-    output_dir: str = str(DATA_ROOT / "activation" / "sae_patch")
+    output_dir: str = str(DATA_ROOT / "activation" / "sae_patch_mixed_prompt_last_s200_u200")
     patch_modes: tuple[str, ...] = (
-        "suppress_positive",
-        "enhance_positive",
-        "suppress_negative",
-        "enhance_negative",
+        "toward_safe",
+        "toward_unsafe",
     )
-    feature_top_k: int = 5
-    patch_strength: float = 0.5
+    patch_strength: float = 0.7
+    safe_threshold: float = 0.95
+    unsafe_threshold: float = 0.70
     sweep_model_glob: str = "llama3.1-8B-Instruct-dpo-wanda-*"
     sweep_output_prefix: str = "prune"
     max_length: int = 1024
@@ -260,8 +259,8 @@ class SAEPatchConfig:
 
 @dataclass
 class BatchPipelineConfig:
-    prune_ratios: tuple[float, ...] = (0.2, 0.3, 0.4, 0.5, 0.6, 0.7)
-    python_bin: str = "python"
+    prune_ratios: tuple[float, ...] = (0.2, 0.4, 0.6)
+    python_bin: str = "/root/autodl-pvt/miniconda3/envs/dive/bin/python"
     baseline_model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
     baseline_lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
     safety_output_root: str = str(DATA_ROOT / "safety2")
@@ -500,8 +499,9 @@ def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
             "seed": cfg.sae_patch.seed,
             "output_dir": cfg.sae_patch.output_dir,
             "patch_modes": list(cfg.sae_patch.patch_modes),
-            "feature_top_k": cfg.sae_patch.feature_top_k,
             "patch_strength": cfg.sae_patch.patch_strength,
+            "safe_threshold": cfg.sae_patch.safe_threshold,
+            "unsafe_threshold": cfg.sae_patch.unsafe_threshold,
             "sweep_model_glob": cfg.sae_patch.sweep_model_glob,
             "sweep_output_prefix": cfg.sae_patch.sweep_output_prefix,
             "max_length": cfg.sae_patch.max_length,

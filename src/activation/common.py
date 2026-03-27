@@ -43,6 +43,37 @@ def sanitize_filename(text: str) -> str:
     return "__".join(part for part in text.replace("/", "__").split("__") if part)
 
 
+def build_prompt_inputs(
+    tokenizer,
+    prompt: str,
+    max_length: int,
+) -> Tuple[Dict[str, torch.Tensor], int]:
+    if hasattr(tokenizer, "apply_chat_template"):
+        prompt_text = tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+        encoded = tokenizer(
+            prompt_text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=max_length,
+            add_special_tokens=False,
+        )
+    else:
+        encoded = tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=max_length,
+        )
+
+    prompt_length = int(encoded["input_ids"].shape[-1])
+    prompt_last_token_index = max(prompt_length - 1, 0)
+    return encoded, prompt_last_token_index
+
+
 def build_prompt_response_inputs(
     tokenizer,
     prompt: str,

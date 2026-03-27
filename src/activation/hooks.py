@@ -281,7 +281,7 @@ class SAELatentPatcher:
     def __init__(
         self,
         model: nn.Module,
-        module_bundles: Dict[str, Dict[str, torch.Tensor | nn.Module | List[int] | List[float]]],
+        module_bundles: Dict[str, Dict[str, torch.Tensor | nn.Module]],
         mode: str,
         strength: float,
     ) -> None:
@@ -301,45 +301,21 @@ class SAELatentPatcher:
             handle.remove()
         self._handles.clear()
 
-    def _select_indices_and_weights(self, bundle: Dict[str, torch.Tensor | nn.Module | List[int] | List[float]]) -> tuple[List[int], torch.Tensor]:
-        if self.mode.endswith("positive"):
-            indices = list(bundle["positive_indices"])  # type: ignore[index]
-            weights = torch.tensor(bundle["positive_weights"], dtype=torch.float32)  # type: ignore[arg-type]
-        else:
-            indices = list(bundle["negative_indices"])  # type: ignore[index]
-            weights = torch.tensor(bundle["negative_weights"], dtype=torch.float32)  # type: ignore[arg-type]
-        return indices, weights
-
-    def _apply_mode(self, codes: torch.Tensor, indices: List[int], weights: torch.Tensor) -> torch.Tensor:
-        if not indices:
-            return codes
-        patched = codes.clone()
-        if weights.numel() == 0:
-            scaled = torch.ones(len(indices), dtype=torch.float32, device=codes.device)
-        else:
-            scaled = weights.to(codes.device)
-            scaled = scaled / scaled.mean().clamp_min(1e-6)
-
-        view = patched[:, indices]
-        if self.mode.startswith("suppress_"):
-            factor = torch.clamp(1.0 - self.strength * scaled, min=0.0)
-            patched[:, indices] = view * factor.unsqueeze(0)
-        elif self.mode.startswith("enhance_"):
-            factor = 1.0 + self.strength * scaled
-            patched[:, indices] = view * factor.unsqueeze(0)
+    def _select_delta(self, bundle: Dict[str, torch.Tensor | nn.Module]) -> torch.Tensor:
+        safe_delta = bundle["safe_delta"]  # type: ignore[index]
+        if self.mode == "toward_safe":
+            return safe_delta
+        if self.mode == "toward_unsafe":
+            return -safe_delta
         else:
             raise ValueError(f"Unsupported patch mode: {self.mode}")
-        return patched
 
     def _make_hook(self, layer_name: str):
         def hook(_module: nn.Module, _inputs, output: torch.Tensor) -> torch.Tensor:
             bundle = self.module_bundles[layer_name]
-            sae = bundle["sae"]  # type: ignore[index]
             mean = bundle["mean"]  # type: ignore[index]
             std = bundle["std"]  # type: ignore[index]
-            indices, weights = self._select_indices_and_weights(bundle)
-            if not indices:
-                return output
+            delta = self._select_delta(bundle)
 
             hidden = output
             if hidden.ndim == 3:
@@ -350,12 +326,8 @@ class SAELatentPatcher:
                 return output
 
             original_dtype = token_slice.dtype
-            norm = (token_slice.float() - mean.to(token_slice.device)) / std.to(token_slice.device)
-            with torch.no_grad():
-                codes = sae.encode(norm)
-                patched_codes = self._apply_mode(codes, indices, weights)
-                delta_norm = sae.decoder(patched_codes - codes)
-            patched_slice = token_slice.float() + delta_norm * std.to(token_slice.device)
+            delta_norm = delta.to(token_slice.device)
+            patched_slice = token_slice.float() + self.strength * delta_norm * std.to(token_slice.device)
 
             patched_output = hidden.clone()
             if patched_output.ndim == 3:

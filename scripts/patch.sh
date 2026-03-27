@@ -6,37 +6,53 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${PROJECT_ROOT}"
 
 readarray -t CFG < <(python - <<'PY'
-from pathlib import Path
 from config import load_config
 cfg = load_config()
 print(cfg.batch.python_bin)
+print(cfg.sae_patch.sae_checkpoint_dir)
 print(cfg.sae_patch.output_dir)
-print(cfg.sae_patch.sweep_model_glob)
 print(cfg.sae_patch.sweep_output_prefix)
 print(cfg.sae_patch.sample_size)
-print(cfg.sae_patch.feature_top_k)
 print(cfg.sae_patch.patch_strength)
+print(cfg.sae_patch.safe_threshold)
+print(cfg.sae_patch.unsafe_threshold)
+for ratio in cfg.batch.prune_ratios:
+    print(f"RATIO={ratio}")
 for mode in cfg.sae_patch.patch_modes:
     print(f"MODE={mode}")
 PY
 )
 
 PYTHON_BIN="${CFG[0]}"
-PATCH_OUTPUT_ROOT="${CFG[1]}"
-MODEL_GLOB="${CFG[2]}"
+SAE_CHECKPOINT_DIR="${CFG[1]}"
+PATCH_OUTPUT_ROOT="${CFG[2]}"
 OUTPUT_PREFIX="${CFG[3]}"
 SAMPLE_SIZE="${CFG[4]}"
-FEATURE_TOP_K="${CFG[5]}"
-PATCH_STRENGTH="${CFG[6]}"
+PATCH_STRENGTH="${CFG[5]}"
+SAFE_THRESHOLD="${CFG[6]}"
+UNSAFE_THRESHOLD="${CFG[7]}"
+RATIOS=()
 PATCH_MODES=()
-for ((i=7; i<${#CFG[@]}; i++)); do
-  PATCH_MODES+=("${CFG[i]#MODE=}")
+for ((i=8; i<${#CFG[@]}; i++)); do
+  if [[ "${CFG[i]}" == RATIO=* ]]; then
+    RATIOS+=("${CFG[i]#RATIO=}")
+  elif [[ "${CFG[i]}" == MODE=* ]]; then
+    PATCH_MODES+=("${CFG[i]#MODE=}")
+  fi
 done
 
-readarray -t MODEL_PATHS < <(find models/pruned -maxdepth 1 -mindepth 1 -type d -name "${MODEL_GLOB}" | sort)
+MODEL_PATHS=()
+for RATIO in "${RATIOS[@]}"; do
+  MODEL_PATH="models/pruned/llama3.1-8B-Instruct-dpo-wanda-${RATIO}"
+  if [[ -d "${MODEL_PATH}" ]]; then
+    MODEL_PATHS+=("${MODEL_PATH}")
+  else
+    echo "Skip ratio=${RATIO}: model directory not found at ${MODEL_PATH}"
+  fi
+done
 
 if [[ ${#MODEL_PATHS[@]} -eq 0 ]]; then
-  echo "No pruned models matched: models/pruned/${MODEL_GLOB}"
+  echo "No configured pruned models were found."
   exit 1
 fi
 
@@ -57,9 +73,12 @@ for MODEL_PATH in "${MODEL_PATHS[@]}"; do
 
   CMD=("${PYTHON_BIN}" -m src.activation.sae_patch
     -m "${MODEL_PATH}"
+    -a ""
+    --sae-checkpoint-dir "${SAE_CHECKPOINT_DIR}"
     --sample-size "${SAMPLE_SIZE}"
-    --feature-top-k "${FEATURE_TOP_K}"
     --patch-strength "${PATCH_STRENGTH}"
+    --safe-threshold "${SAFE_THRESHOLD}"
+    --unsafe-threshold "${UNSAFE_THRESHOLD}"
     --output-dir "${OUTPUT_DIR}")
 
   for MODE in "${PATCH_MODES[@]}"; do

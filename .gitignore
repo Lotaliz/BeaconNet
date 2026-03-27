@@ -3,3 +3,4 @@ models
 *.pyc
 .vscode
 *.pt
+**/__pycache__/

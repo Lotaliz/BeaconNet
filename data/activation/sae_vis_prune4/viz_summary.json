@@ -4,56 +4,59 @@
     "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune4"
   ],
   "selected_modules": [
+    "model.layers.24.self_attn.o_proj",
+    "model.layers.16.mlp.down_proj",
+    "model.layers.28.self_attn.o_proj",
     "model.layers.16.self_attn.o_proj",
-    "model.layers.8.mlp.down_proj",
-    "model.layers.8.self_attn.o_proj",
-    "model.layers.12.mlp.down_proj",
     "model.layers.12.self_attn.o_proj",
-    "model.layers.20.self_attn.o_proj"
+    "model.layers.8.self_attn.o_proj"
   ],
   "run_metrics": [
     {
       "label": "llama3.1-8B-Instruct-dpo-wanda-0.4",
       "compare_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_compare_prune4",
-      "mean_probe_shift_abs": 3.154844750960668,
-      "mean_probe_shift_signed": -1.9289548092832167,
-      "overall_mean_safety_score_delta": -0.05564621463418007,
-      "mean_probe_score_delta_corr": 0.6626188879211744
+      "mean_probe_shift_abs": 0.9663001969456673,
+      "mean_probe_shift_signed": -0.6729805891712507,
+      "mean_baseline_safety_score": 0.9786344537815126,
+      "mean_compressed_safety_score": 0.9260907563025209,
+      "overall_mean_safety_score_delta": -0.05254369601607323,
+      "mean_probe_score_delta_corr": -0.040796999664356313
     }
   ],
   "outputs": {
     "probe_shift_vs_safety_delta": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/probe_shift_vs_safety_delta.png",
+    "probe_shift_vs_safety_level": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/probe_shift_vs_safety_level.png",
     "module_probe_shift_heatmap": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/module_probe_shift_heatmap.png",
     "sample_scatter_plots": [
       {
+        "module_name": "model.layers.24.self_attn.o_proj",
+        "correlation": -0.03553200642689795,
+        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.24.self_attn.o_proj.png"
+      },
+      {
+        "module_name": "model.layers.16.mlp.down_proj",
+        "correlation": -0.012702439056458101,
+        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.16.mlp.down_proj.png"
+      },
+      {
+        "module_name": "model.layers.28.self_attn.o_proj",
+        "correlation": 0.043829369769539446,
+        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.28.self_attn.o_proj.png"
+      },
+      {
         "module_name": "model.layers.16.self_attn.o_proj",
-        "correlation": 0.7073604270110571,
+        "correlation": -0.08019350576949241,
         "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.16.self_attn.o_proj.png"
       },
       {
-        "module_name": "model.layers.8.mlp.down_proj",
-        "correlation": 0.7042248424687081,
-        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.8.mlp.down_proj.png"
-      },
-      {
-        "module_name": "model.layers.8.self_attn.o_proj",
-        "correlation": 0.6905353130485141,
-        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.8.self_attn.o_proj.png"
-      },
-      {
-        "module_name": "model.layers.12.mlp.down_proj",
-        "correlation": 0.6894864694107569,
-        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.12.mlp.down_proj.png"
-      },
-      {
         "module_name": "model.layers.12.self_attn.o_proj",
-        "correlation": 0.7085022440552206,
+        "correlation": 0.06663013883118869,
         "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.12.self_attn.o_proj.png"
       },
       {
-        "module_name": "model.layers.20.self_attn.o_proj",
-        "correlation": 0.6621945818011059,
-        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.20.self_attn.o_proj.png"
+        "module_name": "model.layers.8.self_attn.o_proj",
+        "correlation": -0.036250318150732194,
+        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_vis_prune4/sample_scatter_model.layers.8.self_attn.o_proj.png"
       }
     ]
   }
