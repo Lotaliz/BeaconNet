@@ -1,0 +1,1008 @@
+{
+  "patch_root": "/root/autodl-pvt/BeaconNet/data/activation/sae_patch_mixed_prompt_last_s200_u200",
+  "model_count": 3,
+  "models": {
+    "prune02": {
+      "model_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_patch_mixed_prompt_last_s200_u200/prune02",
+      "report_count": 48,
+      "datasets": [
+        "advbench",
+        "hex-phi"
+      ],
+      "patch_modes": [
+        "toward_safe",
+        "toward_unsafe"
+      ],
+      "layers": [
+        "model.layers.12.mlp.down_proj",
+        "model.layers.12.self_attn.o_proj",
+        "model.layers.16.mlp.down_proj",
+        "model.layers.16.self_attn.o_proj",
+        "model.layers.20.mlp.down_proj",
+        "model.layers.20.self_attn.o_proj",
+        "model.layers.24.mlp.down_proj",
+        "model.layers.24.self_attn.o_proj",
+        "model.layers.28.mlp.down_proj",
+        "model.layers.28.self_attn.o_proj",
+        "model.layers.8.mlp.down_proj",
+        "model.layers.8.self_attn.o_proj"
+      ],
+      "most_significant_report": {
+        "dataset_name": "hex-phi",
+        "layer_name": "model.layers.20.mlp.down_proj",
+        "patch_mode": "toward_safe",
+        "mean_safe_safe_delta": -0.0019000000000002348,
+        "baseline_mean_safe_safe_score": 0.9998300000000002,
+        "patched_mean_safe_safe_score": 0.99793,
+        "sample_count": 20,
+        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_patch_mixed_prompt_last_s200_u200/prune02/model.layers.20.mlp.down_proj/toward_safe/hex-phi.json"
+      },
+      "most_significant_layer": {
+        "layer_name": "model.layers.20.mlp.down_proj",
+        "patch_mode": "toward_safe",
+        "mean_safe_safe_delta": -0.0009700000000001929,
+        "mean_abs_safe_safe_delta": 0.0009700000000001929,
+        "max_abs_safe_safe_delta": 0.0019000000000002348,
+        "report_count": 2
+      },
+      "layer_ranking": [
+        {
+          "layer_name": "model.layers.20.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.0009700000000001929,
+          "mean_abs_safe_safe_delta": 0.0009700000000001929,
+          "max_abs_safe_safe_delta": 0.0019000000000002348,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.00026500000000012625,
+          "mean_abs_safe_safe_delta": 0.00026500000000012625,
+          "max_abs_safe_safe_delta": 0.0005100000000002325,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 8.749999999996261e-05,
+          "mean_abs_safe_safe_delta": 8.749999999996261e-05,
+          "max_abs_safe_safe_delta": 0.00010499999999991072,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -7.25000000001974e-05,
+          "mean_abs_safe_safe_delta": 7.25000000001974e-05,
+          "max_abs_safe_safe_delta": 0.00011000000000027654,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 5.7499999999877094e-05,
+          "mean_abs_safe_safe_delta": 5.7499999999877094e-05,
+          "max_abs_safe_safe_delta": 6.499999999987072e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 4.749999999986709e-05,
+          "mean_abs_safe_safe_delta": 4.749999999986709e-05,
+          "max_abs_safe_safe_delta": 4.999999999988347e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 2.4999999999830713e-05,
+          "mean_abs_safe_safe_delta": 4.499999999996174e-05,
+          "max_abs_safe_safe_delta": 6.999999999979245e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 4.4999999999906226e-05,
+          "mean_abs_safe_safe_delta": 4.4999999999906226e-05,
+          "max_abs_safe_safe_delta": 4.999999999988347e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 4.4999999999906226e-05,
+          "mean_abs_safe_safe_delta": 4.4999999999906226e-05,
+          "max_abs_safe_safe_delta": 4.999999999988347e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 4.4999999999850715e-05,
+          "mean_abs_safe_safe_delta": 4.4999999999850715e-05,
+          "max_abs_safe_safe_delta": 5.999999999983796e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 4.4999999999850715e-05,
+          "mean_abs_safe_safe_delta": 4.4999999999850715e-05,
+          "max_abs_safe_safe_delta": 4.4999999999850715e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 3.4999999999896225e-05,
+          "mean_abs_safe_safe_delta": 3.4999999999896225e-05,
+          "max_abs_safe_safe_delta": 3.999999999992898e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 2.2499999999814335e-05,
+          "mean_abs_safe_safe_delta": 3.249999999999087e-05,
+          "max_abs_safe_safe_delta": 5.4999999999805205e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 2.999999999991898e-05,
+          "mean_abs_safe_safe_delta": 2.999999999991898e-05,
+          "max_abs_safe_safe_delta": 5.499999999991623e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 9.999999999787956e-06,
+          "mean_abs_safe_safe_delta": 2.4999999999997247e-05,
+          "max_abs_safe_safe_delta": 3.49999999997852e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 2.4999999999941735e-05,
+          "mean_abs_safe_safe_delta": 2.4999999999941735e-05,
+          "max_abs_safe_safe_delta": 4.999999999988347e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 2.2499999999925357e-05,
+          "mean_abs_safe_safe_delta": 2.2499999999925357e-05,
+          "max_abs_safe_safe_delta": 4.4999999999850715e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 2.2499999999925357e-05,
+          "mean_abs_safe_safe_delta": 2.2499999999925357e-05,
+          "max_abs_safe_safe_delta": 4.4999999999850715e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 1.4999999999876223e-05,
+          "mean_abs_safe_safe_delta": 2.0000000000020002e-05,
+          "max_abs_safe_safe_delta": 3.4999999999896225e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -1.0000000000176534e-05,
+          "mean_abs_safe_safe_delta": 1.0000000000176534e-05,
+          "max_abs_safe_safe_delta": 1.500000000020929e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 7.499999999938112e-06,
+          "mean_abs_safe_safe_delta": 7.499999999938112e-06,
+          "max_abs_safe_safe_delta": 1.4999999999876223e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -5.000000000088267e-06,
+          "mean_abs_safe_safe_delta": 5.000000000088267e-06,
+          "max_abs_safe_safe_delta": 5.000000000143778e-06,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 4.999999999977245e-06,
+          "mean_abs_safe_safe_delta": 4.999999999977245e-06,
+          "max_abs_safe_safe_delta": 9.99999999995449e-06,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 2.4999999999053557e-06,
+          "mean_abs_safe_safe_delta": 2.4999999999053557e-06,
+          "max_abs_safe_safe_delta": 4.999999999810711e-06,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        }
+      ]
+    },
+    "prune04": {
+      "model_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_patch_mixed_prompt_last_s200_u200/prune04",
+      "report_count": 48,
+      "datasets": [
+        "advbench",
+        "hex-phi"
+      ],
+      "patch_modes": [
+        "toward_safe",
+        "toward_unsafe"
+      ],
+      "layers": [
+        "model.layers.12.mlp.down_proj",
+        "model.layers.12.self_attn.o_proj",
+        "model.layers.16.mlp.down_proj",
+        "model.layers.16.self_attn.o_proj",
+        "model.layers.20.mlp.down_proj",
+        "model.layers.20.self_attn.o_proj",
+        "model.layers.24.mlp.down_proj",
+        "model.layers.24.self_attn.o_proj",
+        "model.layers.28.mlp.down_proj",
+        "model.layers.28.self_attn.o_proj",
+        "model.layers.8.mlp.down_proj",
+        "model.layers.8.self_attn.o_proj"
+      ],
+      "most_significant_report": {
+        "dataset_name": "hex-phi",
+        "layer_name": "model.layers.8.mlp.down_proj",
+        "patch_mode": "toward_unsafe",
+        "mean_safe_safe_delta": -0.01240500000000011,
+        "baseline_mean_safe_safe_score": 0.9698650000000001,
+        "patched_mean_safe_safe_score": 0.95746,
+        "sample_count": 20,
+        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_patch_mixed_prompt_last_s200_u200/prune04/model.layers.8.mlp.down_proj/toward_unsafe/hex-phi.json"
+      },
+      "most_significant_layer": {
+        "layer_name": "model.layers.8.mlp.down_proj",
+        "patch_mode": "toward_unsafe",
+        "mean_safe_safe_delta": -0.006197500000000078,
+        "mean_abs_safe_safe_delta": 0.0062075000000000324,
+        "max_abs_safe_safe_delta": 0.01240500000000011,
+        "report_count": 2
+      },
+      "layer_ranking": [
+        {
+          "layer_name": "model.layers.8.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.006197500000000078,
+          "mean_abs_safe_safe_delta": 0.0062075000000000324,
+          "max_abs_safe_safe_delta": 0.01240500000000011,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.006187500000000068,
+          "mean_abs_safe_safe_delta": 0.006192500000000101,
+          "max_abs_safe_safe_delta": 0.012380000000000169,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.005675000000000041,
+          "mean_abs_safe_safe_delta": 0.005684999999999996,
+          "max_abs_safe_safe_delta": 0.011360000000000037,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.005652499999999838,
+          "mean_abs_safe_safe_delta": 0.005652499999999838,
+          "max_abs_safe_safe_delta": 0.011204999999999798,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.005530000000000035,
+          "mean_abs_safe_safe_delta": 0.005539999999999989,
+          "max_abs_safe_safe_delta": 0.011070000000000024,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.0050675000000000026,
+          "mean_abs_safe_safe_delta": 0.0050675000000000026,
+          "max_abs_safe_safe_delta": 0.009959999999999858,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.004942500000000127,
+          "mean_abs_safe_safe_delta": 0.004952500000000082,
+          "max_abs_safe_safe_delta": 0.00989500000000021,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.004457500000000003,
+          "mean_abs_safe_safe_delta": 0.004467499999999958,
+          "max_abs_safe_safe_delta": 0.00892499999999996,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.004322500000000007,
+          "mean_abs_safe_safe_delta": 0.004332499999999961,
+          "max_abs_safe_safe_delta": 0.008654999999999968,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.0032775000000000443,
+          "mean_abs_safe_safe_delta": 0.0032874999999999988,
+          "max_abs_safe_safe_delta": 0.006565000000000043,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 0.002572500000000033,
+          "mean_abs_safe_safe_delta": 0.002572500000000033,
+          "max_abs_safe_safe_delta": 0.005135000000000112,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.00217750000000011,
+          "mean_abs_safe_safe_delta": 0.00217750000000011,
+          "max_abs_safe_safe_delta": 0.00435500000000022,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.001962500000000089,
+          "mean_abs_safe_safe_delta": 0.001982500000000109,
+          "max_abs_safe_safe_delta": 0.003945000000000198,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.0015075000000000505,
+          "mean_abs_safe_safe_delta": 0.0015225000000000377,
+          "max_abs_safe_safe_delta": 0.003030000000000088,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.0011725000000000207,
+          "mean_abs_safe_safe_delta": 0.0011824999999999752,
+          "max_abs_safe_safe_delta": 0.002354999999999996,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.0008925000000001848,
+          "mean_abs_safe_safe_delta": 0.0009025000000001393,
+          "max_abs_safe_safe_delta": 0.0017950000000003241,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 0.0005724999999999758,
+          "mean_abs_safe_safe_delta": 0.0006975000000000176,
+          "max_abs_safe_safe_delta": 0.0012699999999999934,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 0.0006624999999999548,
+          "mean_abs_safe_safe_delta": 0.0006624999999999548,
+          "max_abs_safe_safe_delta": 0.0013099999999999223,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.0003774999999999751,
+          "mean_abs_safe_safe_delta": 0.00038250000000000783,
+          "max_abs_safe_safe_delta": 0.0007599999999999829,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 0.0002650000000000152,
+          "mean_abs_safe_safe_delta": 0.0002650000000000152,
+          "max_abs_safe_safe_delta": 0.0005249999999999977,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 5.999999999994898e-05,
+          "mean_abs_safe_safe_delta": 5.999999999994898e-05,
+          "max_abs_safe_safe_delta": 0.00011999999999989797,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -2.5000000000052758e-05,
+          "mean_abs_safe_safe_delta": 4.0000000000040004e-05,
+          "max_abs_safe_safe_delta": 6.500000000009276e-05,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 4.999999999977245e-06,
+          "mean_abs_safe_safe_delta": 4.999999999977245e-06,
+          "max_abs_safe_safe_delta": 9.99999999995449e-06,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -2.499999999960867e-06,
+          "mean_abs_safe_safe_delta": 2.499999999960867e-06,
+          "max_abs_safe_safe_delta": 4.999999999921734e-06,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        }
+      ]
+    },
+    "prune06": {
+      "model_dir": "/root/autodl-pvt/BeaconNet/data/activation/sae_patch_mixed_prompt_last_s200_u200/prune06",
+      "report_count": 48,
+      "datasets": [
+        "advbench",
+        "hex-phi"
+      ],
+      "patch_modes": [
+        "toward_safe",
+        "toward_unsafe"
+      ],
+      "layers": [
+        "model.layers.12.mlp.down_proj",
+        "model.layers.12.self_attn.o_proj",
+        "model.layers.16.mlp.down_proj",
+        "model.layers.16.self_attn.o_proj",
+        "model.layers.20.mlp.down_proj",
+        "model.layers.20.self_attn.o_proj",
+        "model.layers.24.mlp.down_proj",
+        "model.layers.24.self_attn.o_proj",
+        "model.layers.28.mlp.down_proj",
+        "model.layers.28.self_attn.o_proj",
+        "model.layers.8.mlp.down_proj",
+        "model.layers.8.self_attn.o_proj"
+      ],
+      "most_significant_report": {
+        "dataset_name": "advbench",
+        "layer_name": "model.layers.12.self_attn.o_proj",
+        "patch_mode": "toward_unsafe",
+        "mean_safe_safe_delta": -0.09994000000000003,
+        "baseline_mean_safe_safe_score": 0.8999699999999999,
+        "patched_mean_safe_safe_score": 0.8000299999999999,
+        "sample_count": 20,
+        "output_path": "/root/autodl-pvt/BeaconNet/data/activation/sae_patch_mixed_prompt_last_s200_u200/prune06/model.layers.12.self_attn.o_proj/toward_unsafe/advbench.json"
+      },
+      "most_significant_layer": {
+        "layer_name": "model.layers.12.self_attn.o_proj",
+        "patch_mode": "toward_unsafe",
+        "mean_safe_safe_delta": -0.07629499999999995,
+        "mean_abs_safe_safe_delta": 0.07629499999999995,
+        "max_abs_safe_safe_delta": 0.09994000000000003,
+        "report_count": 2
+      },
+      "layer_ranking": [
+        {
+          "layer_name": "model.layers.12.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.07629499999999995,
+          "mean_abs_safe_safe_delta": 0.07629499999999995,
+          "max_abs_safe_safe_delta": 0.09994000000000003,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 0.06374750000000001,
+          "mean_abs_safe_safe_delta": 0.06374750000000001,
+          "max_abs_safe_safe_delta": 0.09892499999999982,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 0.06118250000000003,
+          "mean_abs_safe_safe_delta": 0.06118250000000003,
+          "max_abs_safe_safe_delta": 0.07521,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.024784999999999946,
+          "mean_abs_safe_safe_delta": 0.05735000000000001,
+          "max_abs_safe_safe_delta": 0.08213499999999996,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.05462499999999998,
+          "mean_abs_safe_safe_delta": 0.05462499999999998,
+          "max_abs_safe_safe_delta": 0.0649749999999999,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.04792999999999992,
+          "mean_abs_safe_safe_delta": 0.04792999999999992,
+          "max_abs_safe_safe_delta": 0.08811999999999987,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.04649749999999997,
+          "mean_abs_safe_safe_delta": 0.04656249999999995,
+          "max_abs_safe_safe_delta": 0.09305999999999992,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.04460499999999995,
+          "mean_abs_safe_safe_delta": 0.04460499999999995,
+          "max_abs_safe_safe_delta": 0.04978500000000008,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.04237499999999994,
+          "mean_abs_safe_safe_delta": 0.04237499999999994,
+          "max_abs_safe_safe_delta": 0.04795999999999978,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.12.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.021569999999999923,
+          "mean_abs_safe_safe_delta": 0.03973499999999991,
+          "max_abs_safe_safe_delta": 0.06130499999999983,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 0.020627499999999965,
+          "mean_abs_safe_safe_delta": 0.036862499999999965,
+          "max_abs_safe_safe_delta": 0.05748999999999993,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 0.0023599999999999732,
+          "mean_abs_safe_safe_delta": 0.03629500000000002,
+          "max_abs_safe_safe_delta": 0.038654999999999995,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": -0.015807499999999863,
+          "mean_abs_safe_safe_delta": 0.03459749999999995,
+          "max_abs_safe_safe_delta": 0.05040499999999981,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 0.03192000000000006,
+          "mean_abs_safe_safe_delta": 0.03192000000000006,
+          "max_abs_safe_safe_delta": 0.06228000000000011,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.026614999999999944,
+          "mean_abs_safe_safe_delta": 0.026614999999999944,
+          "max_abs_safe_safe_delta": 0.04981499999999994,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.16.mlp.down_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 0.025469999999999937,
+          "mean_abs_safe_safe_delta": 0.025469999999999937,
+          "max_abs_safe_safe_delta": 0.05076999999999998,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 0.02452750000000009,
+          "mean_abs_safe_safe_delta": 0.02452750000000009,
+          "max_abs_safe_safe_delta": 0.044865000000000044,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 0.02355750000000012,
+          "mean_abs_safe_safe_delta": 0.02355750000000012,
+          "max_abs_safe_safe_delta": 0.03369500000000014,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 0.02048750000000016,
+          "mean_abs_safe_safe_delta": 0.02048750000000016,
+          "max_abs_safe_safe_delta": 0.033230000000000315,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.8.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 0.019735000000000058,
+          "mean_abs_safe_safe_delta": 0.019735000000000058,
+          "max_abs_safe_safe_delta": 0.03854500000000005,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": 0.01690500000000006,
+          "mean_abs_safe_safe_delta": 0.01690500000000006,
+          "max_abs_safe_safe_delta": 0.021765000000000034,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.20.self_attn.o_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.012357500000000021,
+          "mean_abs_safe_safe_delta": 0.013172500000000031,
+          "max_abs_safe_safe_delta": 0.025530000000000053,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.28.mlp.down_proj",
+          "patch_mode": "toward_safe",
+          "mean_safe_safe_delta": -0.00676749999999976,
+          "mean_abs_safe_safe_delta": 0.00676749999999976,
+          "max_abs_safe_safe_delta": 0.010554999999999759,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        },
+        {
+          "layer_name": "model.layers.24.self_attn.o_proj",
+          "patch_mode": "toward_unsafe",
+          "mean_safe_safe_delta": 0.0012000000000000899,
+          "mean_abs_safe_safe_delta": 0.0012000000000000899,
+          "max_abs_safe_safe_delta": 0.00138000000000027,
+          "report_count": 2,
+          "datasets": [
+            "advbench",
+            "hex-phi"
+          ]
+        }
+      ]
+    }
+  }
+}

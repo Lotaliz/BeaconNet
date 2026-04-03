@@ -106,6 +106,61 @@ class PruneConfig:
 
 
 @dataclass
+class QuantConfig:
+    model_name: str = "llama3.1-8B-Instruct"
+    model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
+    lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
+    calibration_samples: int = 128
+    batch_size: int = 1
+    max_length: int = 512
+    seed: int = 42
+    output_root: str = str(MODELS_ROOT / "quantized")
+    awq_output_name_prefix: str = "llama3.1-8B-Instruct-dpo-awq"
+    gptq_output_name_prefix: str = "llama3.1-8B-Instruct-dpo-gptq"
+    smoothquant_output_name_prefix: str = "llama3.1-8B-Instruct-dpo-smoothquant"
+    awq_bits: int = 4
+    awq_group_size: int = 128
+    awq_zero_point: bool = True
+    awq_version: str = "gemm"
+    awq_duo_scaling: bool = False
+    awq_n_grid: int = 20
+    gptq_bits: int = 4
+    gptq_group_size: int = 128
+    gptq_desc_act: bool = False
+    gptq_damp_percent: float = 0.1
+    smoothquant_smoothing_strength: float = 0.8
+    smoothquant_scheme: str = "W8A8"
+    smoothquant_ignore: tuple[str, ...] = ("lm_head",)
+    device: str = "cuda" if CUDA_AVAILABLE else "cpu"
+    torch_dtype: torch.dtype = torch.float16 if CUDA_AVAILABLE else torch.float32
+
+    @property
+    def awq_output_name(self) -> str:
+        return f"{self.awq_output_name_prefix}-{self.awq_bits}bit-g{self.awq_group_size}"
+
+    @property
+    def awq_save_path(self) -> str:
+        return str(Path(self.output_root) / self.awq_output_name)
+
+    @property
+    def gptq_output_name(self) -> str:
+        return f"{self.gptq_output_name_prefix}-{self.gptq_bits}bit-g{self.gptq_group_size}"
+
+    @property
+    def gptq_save_path(self) -> str:
+        return str(Path(self.output_root) / self.gptq_output_name)
+
+    @property
+    def smoothquant_output_name(self) -> str:
+        alpha = _format_ratio(self.smoothquant_smoothing_strength)
+        return f"{self.smoothquant_output_name_prefix}-{self.smoothquant_scheme.lower()}-a{alpha}"
+
+    @property
+    def smoothquant_save_path(self) -> str:
+        return str(Path(self.output_root) / self.smoothquant_output_name)
+
+
+@dataclass
 class ActivationConfig:
     model_name: str = "llama3.1-8B-Instruct-0.6"
     model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
@@ -376,6 +431,7 @@ class AppConfig:
     device: str = "cuda" if CUDA_AVAILABLE else "cpu"
 
     prune: PruneConfig = field(default_factory=PruneConfig)
+    quant: QuantConfig = field(default_factory=QuantConfig)
     activation: ActivationConfig = field(default_factory=ActivationConfig)
     sae: SAEConfig = field(default_factory=SAEConfig)
     sae_compare: SAECompareConfig = field(default_factory=SAECompareConfig)
@@ -391,6 +447,7 @@ def load_config() -> AppConfig:
 
 def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
     prune = cfg.prune
+    quant = cfg.quant
     activation = cfg.activation
     sae = cfg.sae
     align = cfg.align
@@ -407,6 +464,31 @@ def config_to_dict(cfg: AppConfig) -> Dict[str, Any]:
         "prune_eval_sample_size": cfg.prune_eval_sample_size,
         "prune_eval_seed": cfg.prune_eval_seed,
         "prune_eval_max_new_tokens": cfg.prune_eval_max_new_tokens,
+        "quant": {
+            "model_name": quant.model_name,
+            "model_path": quant.model_path,
+            "lora_adapter_path": quant.lora_adapter_path,
+            "calibration_samples": quant.calibration_samples,
+            "batch_size": quant.batch_size,
+            "max_length": quant.max_length,
+            "seed": quant.seed,
+            "output_root": quant.output_root,
+            "awq_bits": quant.awq_bits,
+            "awq_group_size": quant.awq_group_size,
+            "awq_zero_point": quant.awq_zero_point,
+            "awq_version": quant.awq_version,
+            "awq_duo_scaling": quant.awq_duo_scaling,
+            "awq_n_grid": quant.awq_n_grid,
+            "gptq_bits": quant.gptq_bits,
+            "gptq_group_size": quant.gptq_group_size,
+            "gptq_desc_act": quant.gptq_desc_act,
+            "gptq_damp_percent": quant.gptq_damp_percent,
+            "smoothquant_smoothing_strength": quant.smoothquant_smoothing_strength,
+            "smoothquant_scheme": quant.smoothquant_scheme,
+            "smoothquant_ignore": list(quant.smoothquant_ignore),
+            "device": quant.device,
+            "torch_dtype": str(quant.torch_dtype),
+        },
         "safety_dataset_paths": cfg.safety_dataset_paths,
         "safety_output_dir": cfg.safety_output_dir,
         "safety_sample_size": cfg.safety_sample_size,

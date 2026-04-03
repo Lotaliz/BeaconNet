@@ -1,9 +1,10 @@
 import argparse
 import csv
+import gc
 import json
 import random
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import torch
 from tqdm import tqdm
@@ -81,6 +82,8 @@ def _load_json_dataset(path: str) -> List[Dict[str, Any]]:
 
 
 def _build_result_config(cfg, model_path: str, xguard_model_path: str, sample_size: int) -> Dict[str, Any]:
+    model_config = _load_model_config(model_path)
+    quantization_config = model_config.get("quantization_config") if isinstance(model_config, dict) else None
     return {
         "project_root": cfg.project_root,
         "data_root": cfg.data_root,
@@ -92,6 +95,7 @@ def _build_result_config(cfg, model_path: str, xguard_model_path: str, sample_si
         "safety_sample_size": sample_size,
         "safety_seed": cfg.safety_seed,
         "safety_generation_max_new_tokens": cfg.safety_generation_max_new_tokens,
+        "quantization_config": quantization_config,
     }
 
 
@@ -122,7 +126,37 @@ def _sample_rows(rows: List[Dict[str, Any]], sample_size: int, seed: int) -> Lis
     return rng.sample(valid_rows, sample_size)
 
 
-def _load_generation_model(model_path: str, device: str, dtype: torch.dtype):
+def _load_model_config(model_path: str) -> Dict[str, Any]:
+    config_path = Path(model_path) / "config.json"
+    if not config_path.is_file():
+        return {}
+    with config_path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    return payload if isinstance(payload, dict) else {}
+
+
+def _get_quantization_config(model_path: str) -> Dict[str, Any]:
+    model_config = _load_model_config(model_path)
+    quantization_config = model_config.get("quantization_config", {})
+    return quantization_config if isinstance(quantization_config, dict) else {}
+
+
+def _infer_model_device(model: Any) -> torch.device:
+    hf_device_map = getattr(model, "hf_device_map", None)
+    if isinstance(hf_device_map, dict):
+        for device in hf_device_map.values():
+            if isinstance(device, str) and device not in {"cpu", "disk"}:
+                return torch.device(device)
+    try:
+        return next(model.parameters()).device
+    except StopIteration:
+        return torch.device("cpu")
+
+
+def _load_generation_model(model_path: str, device: str, dtype: torch.dtype) -> Tuple[Any, Any, torch.device]:
+    quantization_config = _get_quantization_config(model_path)
+    is_quantized_model = bool(quantization_config)
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_path,
         use_fast=True,
@@ -132,66 +166,66 @@ def _load_generation_model(model_path: str, device: str, dtype: torch.dtype):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path,
-        torch_dtype=dtype,
-        device_map=None,
-        trust_remote_code=True,
-    )
-    model.to(device)
+    model_kwargs: Dict[str, Any] = {
+        "device_map": "auto" if is_quantized_model else None,
+        "trust_remote_code": True,
+    }
+    model_kwargs["torch_dtype"] = "auto" if is_quantized_model else dtype
+    model = AutoModelForCausalLM.from_pretrained(model_path, **model_kwargs)
+    if not is_quantized_model:
+        model.to(device)
     model.eval()
-    return model, tokenizer
+    return model, tokenizer, _infer_model_device(model)
 
 
 def _generate_responses(
-    model_path: str,
+    model,
+    tokenizer,
+    model_device: torch.device,
     prompts: List[str],
-    device: str,
-    dtype: torch.dtype,
     max_length: int,
     max_new_tokens: int,
     desc: str,
 ) -> List[str]:
-    model, tokenizer = _load_generation_model(model_path, device, dtype)
     responses: List[str] = []
-    try:
-        for prompt in tqdm(prompts, desc=desc):
-            messages = [{"role": "user", "content": prompt}]
-            if hasattr(tokenizer, "apply_chat_template"):
-                prompt_text = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
-                encoded = tokenizer(
-                    prompt_text,
-                    return_tensors="pt",
-                    truncation=True,
-                    max_length=max_length,
-                    add_special_tokens=False,
-                )
-            else:
-                encoded = tokenizer(
-                    prompt,
-                    return_tensors="pt",
-                    truncation=True,
-                    max_length=max_length,
-                )
-            encoded = {key: value.to(device) for key, value in encoded.items()}
-            with torch.no_grad():
-                output = model.generate(
-                    **encoded,
-                    max_new_tokens=max_new_tokens,
-                    do_sample=False,
-                    pad_token_id=tokenizer.pad_token_id,
-                    eos_token_id=tokenizer.eos_token_id,
-                )
-            prompt_len = encoded["input_ids"].shape[-1]
-            response = tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True).strip()
-            responses.append(response)
-    finally:
-        del model
-        if device.startswith("cuda") and torch.cuda.is_available():
+    for prompt in tqdm(prompts, desc=desc):
+        messages = [{"role": "user", "content": prompt}]
+        if hasattr(tokenizer, "apply_chat_template"):
+            prompt_text = tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            encoded = tokenizer(
+                prompt_text,
+                return_tensors="pt",
+                truncation=True,
+                max_length=max_length,
+                add_special_tokens=False,
+            )
+        else:
+            encoded = tokenizer(
+                prompt,
+                return_tensors="pt",
+                truncation=True,
+                max_length=max_length,
+            )
+        encoded = {key: value.to(model_device) for key, value in encoded.items()}
+        with torch.inference_mode():
+            output = model.generate(
+                **encoded,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+            )
+        prompt_len = encoded["input_ids"].shape[-1]
+        response = tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True).strip()
+        responses.append(response)
+
+        del encoded
+        del output
+        if model_device.type == "cuda":
             torch.cuda.empty_cache()
     return responses
 
@@ -319,6 +353,11 @@ def main() -> None:
         sample_size=sample_size,
     )
 
+    generation_model, generation_tokenizer, generation_model_device = _load_generation_model(
+        model_path=model_path,
+        device=cfg.device,
+        dtype=cfg.dtype,
+    )
     guard_model, guard_tokenizer = _load_xguard(xguard_model_path=xguard_model_path, device=cfg.device)
     all_safe_safe_scores: List[float] = []
 
@@ -328,10 +367,10 @@ def main() -> None:
             sampled_rows = _sample_rows(rows, sample_size, cfg.safety_seed)
             prompts = [_extract_prompt(row) for row in sampled_rows]
             responses = _generate_responses(
-                model_path=model_path,
+                model=generation_model,
+                tokenizer=generation_tokenizer,
+                model_device=generation_model_device,
                 prompts=prompts,
-                device=cfg.device,
-                dtype=cfg.dtype,
                 max_length=cfg.max_length,
                 max_new_tokens=cfg.safety_generation_max_new_tokens,
                 desc=f"{dataset_name}:generate",
@@ -380,8 +419,19 @@ def main() -> None:
                 json.dump(payload, handle, ensure_ascii=False, indent=2)
             print(f"Saved XGuard safety results to: {output_path}")
             print(f"[{dataset_name}] average Safe-Safe score: {average_safe_safe_score:.6f}")
+
+            del rows
+            del sampled_rows
+            del prompts
+            del responses
+            del results
+            gc.collect()
+            if cfg.device.startswith("cuda") and torch.cuda.is_available():
+                torch.cuda.empty_cache()
     finally:
+        del generation_model
         del guard_model
+        gc.collect()
         if cfg.device.startswith("cuda") and torch.cuda.is_available():
             torch.cuda.empty_cache()
 
