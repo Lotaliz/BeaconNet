@@ -1,14 +1,20 @@
 import argparse
 import csv
 import gc
+import importlib
 import json
 import random
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from config import load_config
 
@@ -141,6 +147,31 @@ def _get_quantization_config(model_path: str) -> Dict[str, Any]:
     return quantization_config if isinstance(quantization_config, dict) else {}
 
 
+def _ensure_quantization_runtime(model_path: str) -> None:
+    quantization_config = _get_quantization_config(model_path)
+    quant_method = str(quantization_config.get("quant_method", "")).strip().lower()
+    if quant_method != "compressed-tensors":
+        return
+
+    missing: List[str] = []
+    for import_name, package_name in (
+        ("compressed_tensors", "compressed-tensors"),
+        ("llmcompressor", "llmcompressor"),
+    ):
+        try:
+            importlib.import_module(import_name)
+        except ImportError:
+            missing.append(package_name)
+
+    if missing:
+        packages = " ".join(missing)
+        raise RuntimeError(
+            "This model was saved in the `compressed-tensors` format and cannot be loaded in the current "
+            f"environment. Install the missing package(s): `pip install {packages}`. "
+            f"Model path: {model_path}"
+        )
+
+
 def _infer_model_device(model: Any) -> torch.device:
     hf_device_map = getattr(model, "hf_device_map", None)
     if isinstance(hf_device_map, dict):
@@ -154,6 +185,7 @@ def _infer_model_device(model: Any) -> torch.device:
 
 
 def _load_generation_model(model_path: str, device: str, dtype: torch.dtype) -> Tuple[Any, Any, torch.device]:
+    _ensure_quantization_runtime(model_path)
     quantization_config = _get_quantization_config(model_path)
     is_quantized_model = bool(quantization_config)
 

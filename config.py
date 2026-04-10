@@ -118,7 +118,7 @@ class QuantConfig:
     awq_output_name_prefix: str = "llama3.1-8B-Instruct-dpo-awq"
     gptq_output_name_prefix: str = "llama3.1-8B-Instruct-dpo-gptq"
     smoothquant_output_name_prefix: str = "llama3.1-8B-Instruct-dpo-smoothquant"
-    awq_bits: int = 4
+    awq_bits: int = 8
     awq_group_size: int = 128
     awq_zero_point: bool = True
     awq_version: str = "gemm"
@@ -315,7 +315,7 @@ class SAEPatchConfig:
 @dataclass
 class BatchPipelineConfig:
     prune_ratios: tuple[float, ...] = (0.2, 0.4, 0.6)
-    python_bin: str = "/root/autodl-pvt/miniconda3/envs/dive/bin/python"
+    python_bin: str = "/root/autodl-pvt/miniconda3/envs/value/bin/python"
     baseline_model_path: str = str(MODELS_ROOT / "llama3.1-8B-Instruct")
     baseline_lora_adapter_path: str = str(MODELS_ROOT / "aligned" / "llama3.1-8B-Instruct-dpo")
     safety_output_root: str = str(DATA_ROOT / "safety2")

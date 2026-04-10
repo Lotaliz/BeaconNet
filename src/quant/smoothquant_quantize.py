@@ -31,6 +31,34 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _get_smoothquant_runtime_dtype(default_dtype: torch.dtype) -> torch.dtype:
+    if default_dtype == torch.float16 and torch.cuda.is_available():
+        is_bf16_supported = getattr(torch.cuda, "is_bf16_supported", None)
+        if callable(is_bf16_supported) and is_bf16_supported():
+            return torch.bfloat16
+    return default_dtype
+
+
+def _build_smoothquant_recipe(quant_cfg):
+    return [
+        {
+            "modifier": "SmoothQuantModifier",
+            "config": {
+                "smoothing_strength": quant_cfg.smoothquant_smoothing_strength,
+            },
+        },
+        {
+            "modifier": "GPTQModifier",
+            "config": {
+                "scheme": quant_cfg.smoothquant_scheme,
+                "targets": "Linear",
+                "ignore": list(quant_cfg.smoothquant_ignore),
+                "dampening_frac": float(quant_cfg.gptq_damp_percent),
+            },
+        },
+    ]
+
+
 def main() -> None:
     args = parse_args()
     cfg = load_config()
@@ -50,7 +78,7 @@ def main() -> None:
     try:
         from llmcompressor import oneshot
         from llmcompressor.modifiers.smoothquant import SmoothQuantModifier
-        from llmcompressor.modifiers.quantization import QuantizationModifier
+        from llmcompressor.modifiers.quantization import GPTQModifier
         from transformers import AutoModelForCausalLM, AutoTokenizer
     except ImportError as exc:
         raise RuntimeError(
@@ -68,6 +96,7 @@ def main() -> None:
 
     output_dir = Path(quant_cfg.smoothquant_save_path)
     output_dir.mkdir(parents=True, exist_ok=True)
+    runtime_dtype = _get_smoothquant_runtime_dtype(quant_cfg.torch_dtype)
 
     quant_source_path = None
     source_model_path = resolved_model_path
@@ -75,7 +104,7 @@ def main() -> None:
         source_model_path, quant_source_path = materialize_quantization_source(
             resolved_model_path,
             resolved_adapter_path,
-            quant_cfg.torch_dtype,
+            runtime_dtype,
         )
 
         tokenizer = AutoTokenizer.from_pretrained(source_model_path, use_fast=True)
@@ -92,17 +121,19 @@ def main() -> None:
 
         model = AutoModelForCausalLM.from_pretrained(
             source_model_path,
-            torch_dtype=quant_cfg.torch_dtype,
+            torch_dtype=runtime_dtype,
             device_map="auto",
         )
+        recipe_metadata = _build_smoothquant_recipe(quant_cfg)
         recipe = [
             SmoothQuantModifier(
                 smoothing_strength=quant_cfg.smoothquant_smoothing_strength,
             ),
-            QuantizationModifier(
-                targets="Linear",
+            GPTQModifier(
                 scheme=quant_cfg.smoothquant_scheme,
+                targets="Linear",
                 ignore=list(quant_cfg.smoothquant_ignore),
+                dampening_frac=float(quant_cfg.gptq_damp_percent),
             ),
         ]
         oneshot(
@@ -111,6 +142,7 @@ def main() -> None:
             dataset=calibration_dataset,
             tokenizer=tokenizer,
             max_seq_length=quant_cfg.max_length,
+            num_calibration_samples=len(prompts),
         )
 
         model.save_pretrained(output_dir)
@@ -120,14 +152,18 @@ def main() -> None:
             output_dir=output_dir,
             method="smoothquant",
             runtime_config={
+                "backend": "llmcompressor",
                 "base_model_path": resolved_model_path,
                 "lora_adapter_path": resolved_adapter_path or "",
                 "quant_source_path": source_model_path,
                 "scheme": quant_cfg.smoothquant_scheme,
+                "runtime_torch_dtype": str(runtime_dtype),
                 "smoothing_strength": quant_cfg.smoothquant_smoothing_strength,
+                "damp_percent": quant_cfg.gptq_damp_percent,
                 "ignore": list(quant_cfg.smoothquant_ignore),
                 "calibration_prompt_count": len(prompts),
                 "calibration_mix": calibration_mix,
+                "recipe": recipe_metadata,
             },
             cfg=cfg,
         )
